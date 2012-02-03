@@ -32,7 +32,7 @@ function freelinking_prepopulate_freelinking() {
  */
 function freelinking_prepopulate_node_callback($target, $plugin) {
   // Use specified node type or fallback to configuration.
-  if ($target['type']) {
+  if (isset($target['type']))  {
     $node_type = check_plain($target['type']);
   }
   else {
@@ -60,7 +60,7 @@ function freelinking_prepopulate_node_callback($target, $plugin) {
   $query['edit[title]'] = check_plain($target['dest']);
 
   // Use arguments targeted for Prepopulate or get values from current node/page.
-  if (is_array($target['other']['prepopulate'])) {
+  if (isset($target['other']['prepopulate']) && is_array($target['other']['prepopulate'])) {
     foreach ($target['other']['prepopulate'] as $field => $value) {
       $query[$field] = $value;
     }
@@ -75,11 +75,13 @@ function freelinking_prepopulate_node_callback($target, $plugin) {
   // This is not currently restricted by advanced settings, just by the ability
   // of the FL_P API to recognize arguments from $target
   $query_override = freelinking_prepopulate_fields_from_array('nodecreate', $target);
+  if (isset($query_override)) {
   foreach ($query_override as $key => $value) {
     if ($value) {
       $query[$key] = $value;
     }
   }
+}
   return array($title, $url, array(
       'query' => $query,
       'attributes' => array(
@@ -101,13 +103,17 @@ function freelinking_prepopulate_node_settings() {
     '#description' => t('Which content type should be created by Freelinking?'),
   );
 
-  foreach (freelinking_prepopulate_list_fields('nodecreate') as $key => $value) {
+
+$nodecreate[] = freelinking_prepopulate_list_fields('nodecreate');
+if (isset($nodecreate)) {
+  foreach ($nodecreate as $key => $value) {
     $options[$key] = $value['title'];
   }
+}
   if (empty($options)) {
     return $form;
   }
-
+/* What does this one do? Did not find a usage commented it out.
   $form['freelinking_prepopulate_node_advanced'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Advanced Options'),
@@ -115,6 +121,8 @@ function freelinking_prepopulate_node_settings() {
     '#options' => $options,
     '#description' => t('Use the <em>Linking Node</em> for Create Node presets.'),
   );
+ *
+ */
   return $form;
 }
 
@@ -123,6 +131,7 @@ function freelinking_prepopulate_node_settings() {
  * Gets the first available type
  */
 function _freelinking_prepopulate_default_node_type() {
+  $types = array();
   $types = node_type_get_names();
-  return $types[0];
+  return reset($types);
 }
