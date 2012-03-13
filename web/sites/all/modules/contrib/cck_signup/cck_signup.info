@@ -1,0 +1,15 @@
+; $Id: cck_signup.info,v 1.5.4.3 2011/01/29 19:27:14 jhedstrom Exp $
+name = CCK Signup
+description = Sign-up functionality implemented via CCK
+dependencies[] = node_reference
+core = 7.x
+package = "CCK Sign-up"
+files[] = cck_signup.admin.inc
+files[] = cck_signup.module
+files[] = cck_signup.test
+; Information added by drupal.org packaging script on January 1, 1970 - 00:00
+version = "7.x-1.0-alpha4"
+core = "7.x"
+project = "cck_signup"
+datestamp = "1297460516"
+

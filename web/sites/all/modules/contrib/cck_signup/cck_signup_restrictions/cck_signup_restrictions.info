@@ -1,0 +1,15 @@
+; $Id: cck_signup_restrictions.info,v 1.5.4.1 2011/01/28 21:00:44 jhedstrom Exp $
+name = CCK Signup Restrictions
+description = Set and enforce restrictions on sign-ups.
+dependencies[] = cck_signup
+core = 7.x
+package = "CCK Sign-up"
+files[] = cck_signup_restrictions.admin.inc
+files[] = cck_signup_restrictions.module
+
+; Information added by drupal.org packaging script on January 1, 1970 - 00:00
+version = "7.x-1.0-alpha4"
+core = "7.x"
+project = "cck_signup"
+datestamp = "1297460516"
+

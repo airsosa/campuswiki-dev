@@ -1,0 +1,87 @@
+<?php
+// $Id: cck_signup.test,v 1.1.2.1 2011/01/29 19:27:14 jhedstrom Exp $
+/**
+ * @file
+ * Tests for the CCK Signup module.
+ */
+
+/**
+ * Test the administrative interface.
+ */
+class CCKSignupTestAdmin extends DrupalWebTestCase {
+  /**
+   * Event type.
+   */
+  public $event_type;
+
+  /**
+   * Signup type.
+   */
+  public $signup_type;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Administrative interface',
+      'description' => 'Test the configuration of event and signup node types.',
+      'group' => 'CCK Signup',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('cck_signup', 'node_reference');
+
+    // Create and login user
+    $admin_user = $this->drupalCreateUser(array('administer content types'));
+    $this->drupalLogin($admin_user);
+
+    // Create an event content type.
+    $this->event_type = $this->drupalCreateContentType();
+    // Create a signup content type.
+    $this->signup_type = $this->drupalCreateContentType();
+    // Add a node reference field to the signup type, pointing at the
+    // event type.
+    $field = array(
+      'field_name' => 'field_event_signup',
+      'type' => 'node_reference',
+      'cardinality' => 1,
+      'translatable' => FALSE,
+      'locked' => FALSE,
+      'indexes' => array('nid' => array('nid')),
+      'settings' => array(
+        'uri_scheme' => 'public',
+        'default_image' => FALSE,
+      ),
+      'storage' => array(
+        'type' => 'field_sql_storage',
+        'settings' => array(
+          'referenceable_types' => array(
+            $this->event_type->type => $this->event_type->type,
+          ),
+        ),
+      ),
+    );
+    field_create_field($field);
+
+    $instance = array(
+      'field_name' => 'field_event_signup',
+      'entity_type' => 'node',
+      'label' => 'Event',
+      'bundle' => $this->signup_type->type,
+      'description' => '',
+      'required' => TRUE,
+      'settings' => array(),
+      'widget' => array(
+        // @TODO
+      ),
+      'display' => array(
+        // @TODO
+      ),
+    );
+    field_create_instance($instance);
+  }
+
+  function testEventAdmin() {
+    $this->drupalGet('admin/structure/types/manage/' . $this->event_type->type);
+    $this->assertTest(t('CCK Sign-up'));
+  }
+}
