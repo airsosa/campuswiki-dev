@@ -9,9 +9,6 @@
 
 define('USER_RELATIONSHIPS_UI_PATH', drupal_get_path('module', 'user_relationships_ui'));
 
-
-
-
 /*
  * Notify the user of pending relationship requests
  */
@@ -73,10 +70,12 @@ function user_relationships_ui_actions_between($viewer, $viewed, $action_types =
   if (isset($action_types['received'])) {
     $relationships = user_relationships_load(array('requester_id' => $viewed->uid, 'requestee_id' => $viewer->uid, 'approved' => FALSE));
     foreach ($relationships as $relationship) {
-      $list[] = t('This user has requested to be your %relationship_name. (!pending_requests)', array(
-        '%relationship_name'  => ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name),
-        '!pending_requests'   => l(t('pending requests'), "user/{$viewer->uid}/relationships/received"),
-      ));
+      if (user_relationships_user_access('maintain @relationship relationships', $relationship)) {
+        $list[] = t('This user has requested to be your %relationship_name. (!pending_requests)', array(
+          '%relationship_name'  => ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name),
+          '!pending_requests'   => l(t('pending requests'), "user/{$viewer->uid}/relationships/received"),
+        ));
+      }
     }
   }
 
@@ -100,11 +99,16 @@ function user_relationships_ui_actions_between($viewer, $viewed, $action_types =
   if (isset($action_types['remove'])) {
     $relationships = user_relationships_load(array('between' => array($viewer->uid, $viewed->uid)));
     foreach ($relationships as $relationship) {
-      if ($relationship->approved && !isset($list[$relationship->rid])) {
-        $list[$relationship->rid] = t('%relationship_name (!remove_link)', array(
-          '%relationship_name'  => ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name) . ($relationship->is_oneway ? ($relationship->requester_id == $viewer->uid ? t(' (You to Them)') : t(' (Them to You)')) : NULL),
-          '!remove_link'        => theme('user_relationships_remove_link', array('uid' => $viewer->uid, 'rid' => $relationship->rid)),
-        ));
+      if ($relationship->approved && !isset($list[$relationship->rid]) && user_relationships_ui_check_access('view', NULL, $relationship)) {
+        if (user_relationships_ui_check_access('delete', NULL, $relationship)) {
+          $list[$relationship->rid] = t('%relationship_name (!remove_link)', array(
+            '%relationship_name'  => ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name) . ($relationship->is_oneway ? ($relationship->requester_id == $viewer->uid ? t(' (You to Them)') : t(' (Them to You)')) : NULL),
+            '!remove_link'        => theme('user_relationships_remove_link', array('uid' => $viewer->uid, 'rid' => $relationship->rid)),
+          ));
+        }
+        else {
+          $list[$relationship->rid] = ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name) . ($relationship->is_oneway ? ($relationship->requester_id == $viewer->uid ? t(' (You to Them)') : t(' (Them to You)')) : NULL);
+        }
       }
     }
   }
@@ -120,8 +124,16 @@ function user_relationships_ui_actions_between($viewer, $viewed, $action_types =
 /**
  * Check access callback
  */
-function user_relationships_ui_check_access($types, $account = NULL) {
+function user_relationships_ui_check_access($type, $account = NULL, $relationship_type = NULL) {
   global $user;
+
+  if (!is_object($account)) {
+    $account = $user;
+  }
+
+  if (!is_object($relationship_type)) {
+    $relationship_type = user_relationships_type_load($relationship_type);
+  }
 
   if (user_access('administer user relationships')) {
     return TRUE;
@@ -132,27 +144,37 @@ function user_relationships_ui_check_access($types, $account = NULL) {
     return FALSE;
   }
 
-  if (!is_array($types)) {
-    $types = array($types);
-  }
+  switch ($type) {
+    case 'view':
+      // First check if it is the current user and if he has view own
+      // permission.
+      if ($account->uid == $user->uid && user_relationships_user_access('view own @relationship relationships', $relationship_type)) {
+        return TRUE;
+      }
 
-  foreach ($types as $type) {
-    switch ($type) {
-      case 'view':
-        if (user_access('maintain own relationships') || user_access('view user relationships')) {
-          return TRUE;
-        }
-        break;
-      case 'edit':
-        if (user_access('maintain own relationships')) {
-          return TRUE;
-        }
-        break;
-      case 'user':
-        if ($account->uid == $user->uid && user_access('view user relationships')) {
-          return TRUE;
-        }
-    }
+      // If this is a different user or he doesn't have that permission,
+      // check the view all permission.
+      if (user_relationships_user_access('view all @relationship relationships', $relationship_type)) {
+        return TRUE;
+      }
+      break;
+    case 'approve':
+      // Only the administer permission allows to approve, request, delete
+      // relationships for other users, which was already checked.
+      if ($account->uid == $user->uid && user_relationships_user_access('maintain @relationship relationships', $relationship_type)) {
+        return TRUE;
+      }
+      break;
+    case 'request':
+      if ($account->uid == $user->uid && user_relationships_can_request($account, $relationship_type)) {
+        return TRUE;
+      }
+      break;
+    case 'delete':
+      if ($account->uid == $user->uid && user_relationships_user_access('delete @relationship relationships', $relationship_type)) {
+        return TRUE;
+      }
+      break;
   }
   return FALSE;
 }
@@ -203,20 +225,18 @@ function user_relationships_ui_init() {
  * Implements hook_perm().
  */
 function user_relationships_ui_permission() {
-  return array(
-    'administer user relationships' => array(
-      'title' => t('Administer User Relationships'),
-      'description' => t('Allows to administer user relationships and view relationships of all users.'),
-    ),
-    'maintain own relationships' => array(
-      'title' => t('Maintain own relationships'),
-      'description' => t('Allows to maintain own relationships including approving, removing and creating.'),
-    ),
-    'view user relationships' => array(
-      'title' => t('View own user relationships'),
-      'description' => t('Allows to view own relationships.'),
-    ),
-  );
+  $permissions = array();
+  foreach (user_relationships_types_load() as $type) {
+    $permissions['view own ' . $type->name . ' relationships'] = array(
+      'title' => t('View own %name relationships', array('%name' => $type->name)),
+      'description' => t('The user is allowed to see his own relationships of this type.'),
+    );
+    $permissions['view all ' . $type->name . ' relationships'] = array(
+      'title' => t('View all %name relationships', array('%name' => $type->name)),
+      'description' => t('The user is allowed to see all relationships of this type.'),
+    );
+  }
+  return $permissions;
 }
 
 /**
@@ -253,7 +273,7 @@ function user_relationships_ui_menu() {
     'title callback' => 'user_relationships_ui_title_callback_pending',
     'title arguments' => array('requestee_id'),
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array('edit'),
+    'access arguments' => array('approve'),
     'type' => MENU_LOCAL_TASK,
     'weight' => -9,
     'page callback' => 'user_relationships_pending_requests_page',
@@ -266,7 +286,7 @@ function user_relationships_ui_menu() {
     'title callback' => 'user_relationships_ui_title_callback_pending',
     'title arguments' => array('requester_id'),
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array('edit'),
+    'access arguments' => array('request'),
     'type' => MENU_LOCAL_TASK,
     'weight' => -8,
     'page callback' => 'user_relationships_pending_requests_page',
@@ -283,7 +303,7 @@ function user_relationships_ui_menu() {
         'title' => $relationship->plural_name ? $relationship->plural_name : $relationship->name,
         'type' => MENU_LOCAL_TASK,
         'access callback' => 'user_relationships_ui_check_access',
-        'access arguments' => array('edit'),
+        'access arguments' => array('view', NULL, 1),
         'page callback' => 'user_relationships_page',
         'page arguments' => array(NULL, 1),
         'file' => 'user_relationships_ui.pages.inc',
@@ -296,18 +316,17 @@ function user_relationships_ui_menu() {
     'title' => 'Remove relationship',
     'type' => MENU_CALLBACK,
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array('edit'),
+    'access arguments' => array('delete'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_relationships_ui_remove', 1),
     'file' => 'user_relationships_ui.forms.inc',
   );
 
-
   $items['relationship/%user/request'] = array(
     'title' => 'Create a relationship',
     'type' => MENU_CALLBACK,
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array('edit'),
+    'access arguments' => array('request'),
     'page callback' => 'user_relationships_ui_request_ajax',
     'page arguments' => array(1),
     'file' => 'user_relationships_ui.forms.inc',
@@ -316,7 +335,7 @@ function user_relationships_ui_menu() {
   $items['user/%user/relationships'] = array(
     'title' => 'Relationships',
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array(array('user'), 1),
+    'access arguments' => array('view', 1),
     'page callback' => 'user_relationships_page',
     'page arguments' => array(1),
     'file' => 'user_relationships_ui.pages.inc',
@@ -327,7 +346,7 @@ function user_relationships_ui_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array(array('user'), 1),
+    'access arguments' => array('view', 1),
   );
 
   $items['user/%user/relationships/received'] = array(
@@ -335,7 +354,7 @@ function user_relationships_ui_menu() {
     'title callback' => 'user_relationships_ui_title_callback_pending',
     'title arguments' => array('requestee_id', 1),
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array(array('user'), 1),
+    'access arguments' => array('approve', 1),
     'type' => MENU_LOCAL_TASK,
     'weight' => -9,
     'page callback' => 'user_relationships_pending_requests_page',
@@ -348,7 +367,7 @@ function user_relationships_ui_menu() {
     'title callback' => 'user_relationships_ui_title_callback_pending',
     'title arguments' => array('requester_id', 1),
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array(array('user'), 1),
+    'access arguments' => array('request', 1),
     'type' => MENU_LOCAL_TASK,
     'weight' => -8,
     'page callback' => 'user_relationships_pending_requests_page',
@@ -360,7 +379,7 @@ function user_relationships_ui_menu() {
       'title' => $relationship->plural_name ? $relationship->plural_name : $relationship->name,
       'type' => MENU_LOCAL_TASK,
       'access callback' => 'user_relationships_ui_check_access',
-      'access arguments' => array(array('user'), 1),
+      'access arguments' => array('view', 1, 3),
       'page callback' => 'user_relationships_page',
       'page arguments' => array(1, 3),
       'file' => 'user_relationships_ui.pages.inc',
@@ -371,7 +390,7 @@ function user_relationships_ui_menu() {
     'title' => 'Approve Relationship',
     'type' => MENU_CALLBACK,
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array(array('user'), 1),
+    'access arguments' => array('request', 1),
     'page callback' => 'user_relationships_ui_pending_requested_ajax',
     'page arguments' => array(5, 1, 4),
     'file' => 'user_relationships_ui.forms.inc',
@@ -381,7 +400,7 @@ function user_relationships_ui_menu() {
     'title' => 'Remove relationship',
     'type' => MENU_CALLBACK,
     'access callback' => 'user_relationships_ui_check_access',
-    'access arguments' => array(array('edit'), 1),
+    'access arguments' => array('delete', 1),
     'page callback' => 'user_relationships_ui_remove_ajax',
     'page arguments' => array(1, 3),
     'file' => 'user_relationships_ui.forms.inc',
@@ -425,20 +444,20 @@ function user_relationships_ui_title_callback_pending($column, $account = NULL) 
  * Implements hook_user_login().
  */
 function user_relationships_ui_user_login(&$edit, $account) {
-  if (user_access('maintain own relationships')) {
+   if (user_relationships_ui_check_access('approve', NULL)) {
     _user_relationships_ui_set_notifications($account);
   }
 }
 
 function user_relationships_ui_user_view($account, $view_mode) {
   global $user;
-  if (($account->uid == $user->uid) && user_access('maintain own relationships')) {
+  if (($account->uid == $user->uid) && user_relationships_user_access('maintain @relationship relationships')) {
     _user_relationships_ui_set_notifications($account);
     return;
   }
 
   $output = array();
-  if (user_access('view user relationships') && ($list = user_relationships_ui_actions_between($user, $account, array('remove' => 1)))) {
+  if ($list = user_relationships_ui_actions_between($user, $account, array('remove' => 1))) {
     $output['relations'] = array(
       '#title'      => t('Your relationships to this user'),
       '#type'       => 'user_profile_item',
@@ -489,7 +508,7 @@ function user_relationships_ui_form_alter(&$form, &$form_state, $form_id) {
       '#after_build' => array('user_relationships_ui_account_fieldset_remove_if_empty'),
     );
 
-    if (variable_get('user_relationships_ui_require_approval', TRUE) && user_access('maintain own relationships', $form['#user'])) {
+    if (variable_get('user_relationships_ui_require_approval', TRUE)) {
       if (variable_get('user_relationships_allow_auto_approve', FALSE) && ($relationships = user_relationships_types_load())) {
         if (!isset($form['#user']->data['user_relationships_ui_auto_approve']) || !is_array($form['#user']->data['user_relationships_ui_auto_approve'])) {
           $form['#user']->data['user_relationships_ui_auto_approve'] = array();
@@ -497,7 +516,7 @@ function user_relationships_ui_form_alter(&$form, &$form_state, $form_id) {
 
         $options = array();
         foreach ($relationships as $relationship) {
-          if ($relationship->requires_approval && user_relationships_can_receive($form['#user'], $relationship)) {
+          if ($relationship->requires_approval && user_relationships_ui_check_access('approve', NULL, $relationship)) {
             $options[$relationship->rtid] = ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name);
           }
         }

@@ -200,11 +200,18 @@ function user_relationship_blocks_block_view($delta) {
   $settings->block_type = $block_type;
 
   // determine which user's relationships to display
-  if ($is_my_block && $user->uid) {
-    $account = $user;
+  if ($is_my_block) {
+    // Only allow access if the user has permissions to view his own
+    // relationships.
+    if (user_relationships_ui_check_access('view', $user, user_relationships_type_load($rtid))) {
+      $account = $user;
+    }
   }
   else if ($uid = _user_relationship_blocks_get_uid($delta)) {
-    $account = user_load($uid);
+    $account_loaded = user_load($uid);
+    if ($account_loaded && user_relationships_ui_check_access('view', $account_loaded, user_relationships_type_load($rtid))) {
+      $account = $account_loaded;
+    }
   }
 
   if (!empty($account)) {

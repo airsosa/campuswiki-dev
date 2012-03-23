@@ -190,6 +190,7 @@ function _user_relationships_generate_query($param = array(), $options = array()
         $query->condition('ur.rtid', $value, 'NOT IN');
         break;
 
+      case 'rid':
       case 'requester_id':
       case 'requestee_id':
         $twoway_reverse_clause = TRUE;//#479486 these columns automatically should exclude duplicates
@@ -274,15 +275,28 @@ function _user_relationships_generate_query($param = array(), $options = array()
  * Implements hook_permission().
  */
 function user_relationships_permission() {
-  $permissions = array();
+  $permissions = array(
+    'administer user relationships' => array(
+    'title' => t('Administer User Relationships'),
+    'description' => t('Allows to administer user relationships and view relationships of all users.'),
+  ));
+
   foreach (user_relationships_types_load() as $type) {
     $permissions['can have ' . $type->name . ' relationships'] = array(
-      'title' => t('Can have @name relationships', array('@name' => $type->name)),
-      'description' => t('The user is allowed to have and accept relationships of that type.'),
+      'title' => t('Have %name relationships', array('%name' => $type->name)),
+      'description' => t('The user may have relationships of this type.'),
+    );
+    $permissions['maintain ' . $type->name . ' relationships'] = array(
+      'title' => t('Maintain %name relationships', array('%name' => $type->name)),
+      'description' => t('The user may approve or decline relationship requests of this type.'),
     );
     $permissions['can request ' . $type->name . ' relationships'] = array(
-      'title' => t('Can request @name relationships', array('@name' => $type->name)),
-      'description' => t('The user is allowed to request relationships of that type.'),
+      'title' => t('Request %name relationships', array('%name' => $type->name)),
+      'description' => t('The user may request relationships of this type.'),
+    );
+    $permissions['delete ' . $type->name . ' relationships'] = array(
+      'title' => t('Delete %name relationships', array('%name' => $type->name)),
+      'description' => t('The user may delete current relationships of this type.'),
     );
   }
   return $permissions;
@@ -462,7 +476,7 @@ function user_relationships_type_save($rtype) {
   }
 
   // ensure "expires_val" is numeric and not negative
-  if (!is_numeric($rtype->expires_val) || $rtype->expires_val < 0) {
+  if (!isset($rtype->expires_val) || !$rtype->expires_val >= 0) {
     $rtype->expires_val = 0;
   }
 
@@ -487,6 +501,9 @@ function user_relationships_type_delete($rtid) {
   db_delete('user_relationships')
     ->condition('rtid', $rtid)
     ->execute();
+
+  // Clear static cache.
+  user_relationships_types_load(TRUE);
 
   module_invoke_all('user_relationships_type_delete', $rtype);
 }
@@ -594,7 +611,8 @@ function user_relationships_save_relationship($relationship, $action = 'request'
 
     $keys = array();
     if (isset($relationship->rid)) {
-      // Delete possible requests coming the other direction
+      // Delete possible requests coming the other direction.
+      // @todo: The API prevents this, can this be removed.
       $relationship_type = user_relationships_type_load($relationship->rtid);
       if (!$relationship_type->is_oneway) {
         db_delete('user_relationships')
@@ -616,10 +634,21 @@ function user_relationships_save_relationship($relationship, $action = 'request'
       // to do a double entry for DB efficiency.
       $relationship_type = user_relationships_type_load($relationship->rtid);
       if ($relationship->approved && !$relationship_type->is_oneway) {
-        $reversed_relationship = clone $relationship;
-        $reversed_relationship->requestee_id = $relationship->requester_id;
-        $reversed_relationship->requester_id = $relationship->requestee_id;
-        drupal_write_record('user_relationships', $reversed_relationship, $keys);
+        // Make sure a reversed relationship entry is created if it does not
+        // exist yet.
+        db_merge('user_relationships')
+          ->key(array(
+              'rid' => $relationship->rid,
+              'requester_id' => $relationship->requestee_id,
+              'requestee_id' => $relationship->requester_id))
+          ->fields(array(
+              'rtid' => $relationship->rtid,
+              'approved' => $relationship->approved,
+              'created' => $relationship->created,
+              'changed' => $relationship->changed,
+              'flags' => $relationship->flags,
+           ))
+          ->execute();
       }
     }
 

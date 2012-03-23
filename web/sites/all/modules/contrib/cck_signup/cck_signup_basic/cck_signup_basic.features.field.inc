@@ -1,7 +1,11 @@
 <?php
+/**
+ * @file
+ * cck_signup_basic.features.field.inc
+ */
 
 /**
- * Implementation of hook_field_default_fields().
+ * Implements hook_field_default_fields().
  */
 function cck_signup_basic_field_default_fields() {
   $fields = array();
@@ -13,7 +17,7 @@ function cck_signup_basic_field_default_fields() {
       'cardinality' => '1',
       'deleted' => '0',
       'entity_types' => array(
-        '0' => 'node',
+        0 => 'node',
       ),
       'field_name' => 'body',
       'foreign keys' => array(
@@ -26,7 +30,7 @@ function cck_signup_basic_field_default_fields() {
       ),
       'indexes' => array(
         'format' => array(
-          '0' => 'format',
+          0 => 'format',
         ),
       ),
       'module' => 'text',
@@ -241,7 +245,7 @@ function cck_signup_basic_field_default_fields() {
       ),
       'indexes' => array(
         'nid' => array(
-          '0' => 'nid',
+          0 => 'nid',
         ),
       ),
       'module' => 'node_reference',
@@ -251,6 +255,11 @@ function cck_signup_basic_field_default_fields() {
           'event' => 'event',
           'page' => 0,
           'signup' => 0,
+        ),
+        'view' => array(
+          'args' => array(),
+          'display_name' => '',
+          'view_name' => '',
         ),
       ),
       'translatable' => '1',
@@ -287,6 +296,8 @@ function cck_signup_basic_field_default_fields() {
         'active' => 1,
         'module' => 'nodereference_url',
         'settings' => array(
+          'autocomplete_match' => 'contains',
+          'edit_fallback' => 0,
           'fallback' => 'page_not_found',
           'node_link' => array(
             'destination' => 'node',
@@ -301,6 +312,14 @@ function cck_signup_basic_field_default_fields() {
       ),
     ),
   );
+
+  // Translatables
+  // Included for use with string extractors like potx.
+  t('Body');
+  t('Date');
+  t('Event');
+  t('Event capacity');
+  t('Limit the number of signups for this event.');
 
   return $fields;
 }

@@ -48,8 +48,9 @@ class UserRelationshipsPrivatemsgRecipientTestCase extends DrupalWebTestCase {
 
     $have_permission = 'can have ' . $relationship['name'] . ' relationships';
     $request_permission = 'can request ' . $relationship['name'] . ' relationships';
+    $maintain_permission = 'maintain ' . $relationship['name'] . ' relationships';
 
-    $admin = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'administer user relationships', 'maintain own relationships', 'write privatemsg to relationships', 'access user profiles'));
+    $admin = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'administer user relationships', $maintain_permission, 'write privatemsg to relationships', 'access user profiles'));
     $userA = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'write privatemsg to relationships'));
     $userB = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients'));
 
@@ -153,8 +154,8 @@ class UserRelationshipsPrivatemsgRecipientTestCase extends DrupalWebTestCase {
 
     $have_permission = 'can have ' . $relationship['name'] . ' relationships';
     $request_permission = 'can request ' . $relationship['name'] . ' relationships';
-
-    $admin = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'administer user relationships', 'maintain own relationships', 'write privatemsg to relationships', 'access user profiles'));
+    $maintain_permission = 'maintain ' . $relationship['name'] . ' relationships';
+    $admin = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'administer user relationships', $maintain_permission, 'write privatemsg to relationships', 'access user profiles'));
 
     $this->drupalLogin($admin);
 

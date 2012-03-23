@@ -1,7 +1,11 @@
 <?php
+/**
+ * @file
+ * cck_signup_basic.features.user_permission.inc
+ */
 
 /**
- * Implementation of hook_user_default_permissions().
+ * Implements hook_user_default_permissions().
  */
 function cck_signup_basic_user_default_permissions() {
   $permissions = array();

@@ -294,13 +294,14 @@ function theme_user_relationship_implications_page($variables) {
 
   $query = _user_relationships_generate_query($params, $options);
 
-  $edit_access = ($user->uid == $uid && user_access('maintain own relationships')) || user_access('administer users');
   $online_interval = time() - variable_get('user_block_seconds_online', 180);
 
   $rows = array();
   foreach ($query->execute() as $relation) {
     $this_user = $viewed_user->uid == $relation->requestee_id ? 'requester_id' : 'requestee_id';
     $this_user = user_load($relation->$this_user);
+
+    $edit_access = user_relationships_ui_check_access('delete', NULL, $relation);
 
     $this_users_relationships = user_relationships_load(array('user' => $this_user->uid));
     $rows[] = array(

@@ -186,7 +186,7 @@ function user_relationship_mailer_form_user_relationships_admin_settings_alter(&
 function user_relationship_mailer_form_alter(&$form, &$form_state, $form_id) {
   if (($form_id == 'user_register_form' || $form_id == 'user_profile_form') && $form['#user_category'] == 'account') {
     $account = $form_state['user'];
-    $access = variable_get('user_relationship_mailer_send_mail', FALSE) && user_access('maintain own relationships', $account);
+    $access = variable_get('user_relationship_mailer_send_mail', FALSE) && user_relationships_user_access('maintain @relationship relationships', NULL, $account);
     $form['user_relationships_ui_settings']['user_relationship_mailer_send_mail'] = array(
       '#type'           => 'checkbox',
       '#title'          => t('Receive e-mail notification of relationship activity'),

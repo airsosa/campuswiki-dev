@@ -1,5 +1,4 @@
 <?php
-// $Id: cck_signup_restrictions.admin.inc,v 1.5.4.1 2011/02/03 02:07:29 jhedstrom Exp $
 
 /**
  * @file

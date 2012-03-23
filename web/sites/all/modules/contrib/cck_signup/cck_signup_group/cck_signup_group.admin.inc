@@ -1,6 +1,5 @@
 <?php
 
-// $Id: cck_signup_group.admin.inc,v 1.5.2.1.2.3 2011/02/03 02:20:20 jhedstrom Exp $
 
 /**
  * @file
@@ -57,6 +56,7 @@ function _cck_signup_group_form_node_type_form_alter(&$form, $form_state) {
     }
     else {
       $form['cck_signup']['cck_signup_group']['cck_signup_group_type']['#disabled'] = TRUE;
+      $form['cck_signup']['cck_signup_group']['cck_signup_group_type']['#default_value'] = 0;
       $form['cck_signup']['cck_signup_group']['cck_signup_group_type']['#description'] = t('In order to enable this node type as a group sign-up, there must be an available integer (number module) field to use as the group size.');
     }
 
@@ -81,6 +81,7 @@ function cck_signup_group_form_node_type_form_validate($form, &$form_state) {
  */
 function _cck_signup_group_fieldgroups($type) {
   $groups = field_group_info_groups();
+  $options = array();
   if (!empty($groups['node'][$type]['form'])) {
     foreach ($groups['node'][$type]['form'] as $name => $group) {
       $options[$name] = $group->label;

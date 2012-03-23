@@ -1,5 +1,4 @@
 <?php
-// $Id: cck_signup.module,v 1.5.2.3.2.13 2011/02/02 21:41:45 jhedstrom Exp $
 /**
  * @file
  * CCK Signup module.
@@ -145,13 +144,15 @@ function cck_signup_cck_signup_validate($type, $event, &$form_state) {
 /**
  * Validate that the given event has capacity.
  *
- * @param $type
+ * @param string $type
  *   The signup node type.
- * @param $event
+ * @param object $event
  *   The event node object.
- * @param $form_state
+ * @param array $form_state
  *   The form state array.
+ *
  * @return boolean
+ *   TRUE if the given event has capacity.
  */
 function cck_signup_validate_capacity($type, $event, &$form_state) {
   $remaining = cck_signup_get_remaining_capacity($event);
@@ -175,6 +176,10 @@ function cck_signup_validate_capacity($type, $event, &$form_state) {
  * Get the remaining capacity for an event.
  */
 function cck_signup_get_remaining_capacity($event) {
+  if (!variable_get('cck_signup_type_' . $event->type)) {
+    // If this event type does not have signups enabled, return.
+    return NULL;
+  }
   $capacity_field = variable_get('cck_signup_field_capacity_' . $event->type, FALSE);
   if (!$capacity_field || !$capacity = field_get_items('node', $event, $capacity_field)) {
     return;
@@ -186,11 +191,19 @@ function cck_signup_get_remaining_capacity($event) {
   $signups = array();
   foreach ($types as $type) {
     $field = field_info_field($signup_field);
-    $query = new EntityFieldQuery;
+    $query = new EntityFieldQuery();
     $query->entityCondition('entity_type', 'node')
       ->entityCondition('bundle', $type)
       ->fieldCondition($field, 'nid', $event->nid)
       ->count();
+
+    // If there is an attendance status field, only count signups with
+    // a status greater than 0.
+    if ($attendance_status_field = variable_get('cck_signup_field_attendance_status_' . $event->type, 0)) {
+      $attendance_status_field = field_info_field($attendance_status_field);
+      $query->fieldCondition($attendance_status_field, 'value', 0, '>');
+    }
+
     $count = $query->execute();
     $signups[$type] = $count;
   }
@@ -222,7 +235,7 @@ function cck_signup_get_signup_types($field_name) {
 /**
  * Determine if an event is past.
  *
- * @param $event
+ * @param object $event
  *   Event node object.
  */
 function cck_signup_event_is_past($event) {
@@ -241,11 +254,13 @@ function cck_signup_event_is_past($event) {
 /**
  * Get a signup record for a given event.
  *
- * @param $event
+ * @param object $event
  *   Event node object.
- * @param $account
+ * @param object $account
  *   User object.
- * @return boolean
+ *
+ * @return mixed
+ *   Signup node object on success.
  */
 function cck_signup_get_signup($event, $account = NULL) {
   if (empty($account)) {
@@ -265,7 +280,7 @@ function cck_signup_get_signup($event, $account = NULL) {
   $field = field_info_field($field_name);
   $signup_types = cck_signup_get_signup_types($field_name);
   foreach ($signup_types as $signup_type) {
-    $query = new EntityFieldQuery;
+    $query = new EntityFieldQuery();
     $query->entityCondition('entity_type', 'node')
       ->entityCondition('bundle', $signup_type)
       ->fieldCondition($field, 'nid', $event->nid)

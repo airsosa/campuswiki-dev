@@ -1,5 +1,4 @@
 <?php
-// $Id: cck_signup.admin.inc,v 1.5.2.2.2.5 2011/01/28 23:09:57 jhedstrom Exp $
 /**
  * @file
  * Admin forms and callbacks for the CCK Sign-up module.
@@ -48,10 +47,11 @@ function _cck_signup_node_reference_fields($type) {
 /**
  * Get date fields associated with node $type.
  *
- * @param $type
- *   The node type to retrieve numeric fields for.
+ * @param string $type
+ *   The node type to retrieve date fields for.
+ *
  * @return array
- *   And array of numeric fields, keyed by machine name.
+ *   An array of numeric fields, keyed by machine name.
  */
 function _cck_signup_date_fields($type) {
   $options = array();
@@ -74,8 +74,9 @@ function _cck_signup_date_fields($type) {
 /**
  * Get integer fields associated with node $type.
  *
- * @param $type
+ * @param string $type
  *   The node type to retrieve numeric fields for.
+ *
  * @return array
  *   And array of numeric fields, keyed by machine name.
  */
@@ -88,13 +89,16 @@ function _cck_signup_numeric_fields($type) {
     if (empty($instance)) {
       continue;
     }
-    if (in_array($field['type'], array('number_integer'))) {
+    if (in_array($field['type'], array('number_integer', 'list_integer'))) {
       $options[$field['field_name']] = $instance['label'];
     }
   }
   return $options;
 }
 
+/**
+ * Helper implementation of hook_form_FORM_ID_alter().
+ */
 function _cck_signup_form_node_type_form_alter(&$form, $form_state) {
   $type = $form['old_type']['#value'];
   if ($type) {
@@ -157,13 +161,34 @@ function _cck_signup_form_node_type_form_alter(&$form, $form_state) {
       // Potential status fields.
       $form['cck_signup']['cck_signup_field_status'] = array(
         '#type' => 'select',
-        '#title' => t('Status field to associate with sign-ups'),
+        '#title' => t('Status field to associate with event sign-up status'),
         '#options' => $options,
         '#default_value' => variable_get('cck_signup_field_status_' . $type, 0),
         '#description' => t('Should be an integer field, with allowed values, 0 for closed and 1 for open.'),
       );
     }
 
+    // Potential attendance status fields.
+    if (($signup_field = variable_get('cck_signup_field_' . $type, 0))
+      && ($types = cck_signup_get_signup_types($signup_field))) {
+      // @TODO support multiple types?
+      $signup_type = array_pop($types);
+      if (($options = _cck_signup_numeric_fields($signup_type))
+        && !empty($options)) {
+        array_unshift($options, t('-- Choose --'));
+        $form['cck_signup']['cck_signup_field_attendance_status'] = array(
+          '#type' => 'select',
+          '#title' => t('Attendance status to associate with sign-ups'),
+          '#options' => $options,
+          '#default_value' => variable_get('cck_signup_field_attendance_status', 0),
+          '#description' => t('An integer field attached to the sign-up type for confirming attendance (eg, a Yes/No/Maybe field). Anything above 0 will count towards capacity, while 0 or less will not count. In the case of Yes/No/Maybe, the allowed values might look like <pre>1|Yes
+0|No
+-1|Maybe'),
+        );
+      }
+    }
+
+    // Attach additional validation callback.
     if (!in_array('cck_signup_form_node_type_form_validate', $form['#validate'])) {
       $form['#validate'][] = 'cck_signup_form_node_type_form_validate';
     }

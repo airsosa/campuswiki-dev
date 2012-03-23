@@ -27,7 +27,7 @@ class views_handler_filter_user_relationships_type extends views_handler_filter_
     );
   }
 
-  function value_validate(&$form, &$form_state) {
+  function value_validate($form, &$form_state) {
     $values = drupal_explode_tags($form_state['values']['options']['value']);
     $rtids = $this->validate_type_strings($form['value'], $values);
 

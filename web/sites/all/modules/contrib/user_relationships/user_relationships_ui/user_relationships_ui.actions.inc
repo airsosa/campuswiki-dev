@@ -129,7 +129,7 @@ function user_relationships_ui_pending_requested_submit($form, &$form_state) {
 
   switch ($form_state['values']['action']) {
   case 'approve':
-    if (!user_access('maintain own relationships') || (!user_access('administer user relationships') && $user->uid != $requestee->uid)) {
+    if (!user_relationships_ui_check_access('approve', NULL, $relationship)) {
       drupal_access_denied();
       exit();
     }
@@ -139,7 +139,7 @@ function user_relationships_ui_pending_requested_submit($form, &$form_state) {
     break;
 
   case 'cancel':
-    if (!user_access('maintain own relationships') || (!user_access('administer user relationships') && $user->uid != $requester->uid)) {
+    if (!user_relationships_ui_check_access('request', NULL, $relationship)) {
       drupal_access_denied();
       exit();
     }
@@ -148,7 +148,7 @@ function user_relationships_ui_pending_requested_submit($form, &$form_state) {
     break;
 
   case 'disapprove':
-    if (!user_access('maintain own relationships') || (!user_access('administer user relationships') && $user->uid != $requestee->uid)) {
+    if (!user_relationships_ui_check_access('approve', NULL, $relationship)) {
       drupal_access_denied();
       exit();
     }
@@ -172,7 +172,7 @@ function user_relationships_ui_remove_submit($form, &$form_state) {
 
   $relationship = user_relationships_load($form_state['values']['rid']);
 
-  if (!user_access('maintain own relationships') || (!user_access('administer user relationships') && $user->uid != $relationship->requester_id && $user->uid != $relationship->requestee_id)) {
+  if (!user_relationships_ui_check_access('delete', NULL, $relationship)) {
     drupal_access_denied();
     exit();
   }

@@ -1,6 +1,5 @@
 <?php
 
-// $Id: cck_signup_group.module,v 1.5.4.9 2011/02/07 20:39:26 jhedstrom Exp $
 
 /**
  * @file
@@ -21,7 +20,7 @@ function cck_signup_group_cck_signup_validate($type, $event, &$form_state) {
         // CCK should catch this error.
       }
       else {
-        // Need to account for updating the number of signups
+        // Need to account for updating the number of signups.
         $old_count = 0;
         if ($values['nid']) {
           $old = node_load($values['nid']);
@@ -57,7 +56,8 @@ function cck_signup_group_form_alter(&$form, $form_state, $form_id) {
           // @TODO probably a better way to pass language to JS via FAPI?
           'language' => $form['language']['#value'],
         );
-        // @TODO the jQuery in cck-signup-group.js isn't targetting the fieldset.
+        // @TODO the jQuery in cck-signup-group.js isn't targetting the
+        // fieldset.
         drupal_add_js(array('cckSignupGroup' => $settings), array('type' => 'setting', 'scope' => JS_DEFAULT));
         drupal_add_js(drupal_get_path('module', 'cck_signup_group') . '/cck-signup-group.js');
       }
@@ -107,11 +107,14 @@ function cck_signup_group_cck_signup_available_capacity_alter(&$signups, $event)
 }
 
 /**
- * Determine if a given sign-up node is a group sign-up (defined by having a count of more than 1).
+ * Determine if a given sign-up node is a group sign-up (defined by having a
+ * count of more than 1).
  *
- * @param $signup
+ * @param object $signup
  *   A sign-up node object.
+ *
  * @return boolean
+ *   TRUE if this is a group signup.
  */
 function cck_signup_group_is_group_signup($signup) {
   // Get the count field.

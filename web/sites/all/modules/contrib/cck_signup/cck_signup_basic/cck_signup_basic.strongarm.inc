@@ -1,7 +1,11 @@
 <?php
+/**
+ * @file
+ * cck_signup_basic.strongarm.inc
+ */
 
 /**
- * Implementation of hook_strongarm().
+ * Implements hook_strongarm().
  */
 function cck_signup_basic_strongarm() {
   $export = array();

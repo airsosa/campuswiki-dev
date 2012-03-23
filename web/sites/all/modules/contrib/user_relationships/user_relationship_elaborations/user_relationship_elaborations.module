@@ -149,7 +149,7 @@ function user_relationship_elaborations_form_alter(&$form, $form_state, $form_id
 
     case 'user_relationships_ui_request':
       // In case the form is an error form which the UI module has encountered
-      if (!isset($form['error'])) {
+      if (!isset($form['error']) && !variable_get('user_relationships_elaborations_api_only', FALSE)) {
         // Make sure that the select box holding the relationship types is above the elaboration textarea.
         $form['rtid']['#weight'] = -10;
         // Adding text area to elaborate when creating a new relationship with another user.
@@ -190,4 +190,14 @@ function user_relationship_elaborations_request_submit($form, &$form_state) {
       user_relationships_save_elaboration($relationship->rid, $form_state['values']['elaboration']);
     }
   }
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function user_relationship_elaborations_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'user_relationship_elaborations'),
+  );
 }

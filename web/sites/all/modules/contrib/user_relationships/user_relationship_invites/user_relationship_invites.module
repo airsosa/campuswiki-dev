@@ -49,23 +49,24 @@ function user_relationship_invites_form_invite_form_alter(&$form, $form_state) {
  */
 function user_relationship_invites_invite_form_validate($form, &$form_state) {
   global $user;
-  $user->rtid = $form_state['values']['rtid'];
+  if (!empty($form_state['values']['rtid'])) {
+    $user->rtid = $form_state['values']['rtid'];
+  }
 }
 
 /**
- * Implements hook_invite().
+ * Implements hook_invite_send().
 */
-function user_relationship_invites_invite($op, $args) {
-  switch ($op) {
-    case 'invite':
-      db_insert('user_relationship_invites')
-        ->fields(array(
-          'inviter_uid' => $args['inviter']->uid,
-          'rtid' => $args['inviter']->rtid,
-          'invite_code' => $args['code'],
-        ))
-        ->execute();
-      break;
+function user_relationship_invites_invite_send($invite) {
+  global $user;
+  if (!empty($user->rtid)) {
+    db_insert('user_relationship_invites')
+      ->fields(array(
+        'inviter_uid' => $invite->uid,
+        'rtid' => $user->rtid,
+        'invite_code' => $invite->reg_code,
+      ))
+      ->execute();
   }
 }
 
@@ -73,9 +74,8 @@ function user_relationship_invites_invite($op, $args) {
  * Implements hook_user().
 */
 function user_relationship_invites_form_user_register_form_alter(&$form, &$form_state) {
-  if (($code = $_SESSION[INVITE_SESSION]) && ($invite = user_relationship_invites_get_invite($code)) && $invite->relationship_type) {
+  if (!empty($_SESSION[INVITE_SESSION]) && ($code = $_SESSION[INVITE_SESSION]) && ($invite = user_relationship_invites_get_invite($code)) && $invite->relationship_type) {
 
-    $form = array();
     $inviter = $invite->inviter;
     $relationship_type = $invite->relationship_type;
 
@@ -110,7 +110,6 @@ function user_relationship_invites_form_user_register_form_alter(&$form, &$form_
       '#type' => 'value',
       '#value' => $relationship_type,
     );
-    return $form;
   }
 }
 

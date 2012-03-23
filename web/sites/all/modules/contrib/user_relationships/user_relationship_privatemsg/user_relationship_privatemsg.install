@@ -12,7 +12,7 @@ function user_relationship_privatemsg_schema() {
     'fields' => array(
       'urpid'   => array(
         'type'     => 'serial',
-        'not NULL' => TRUE,
+        'not null' => TRUE,
       ),
       'rtid'   => array(
         'type'     => 'int',

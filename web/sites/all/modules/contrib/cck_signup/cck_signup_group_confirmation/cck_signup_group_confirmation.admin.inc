@@ -1,5 +1,4 @@
 <?php
-// $Id: cck_signup_group_confirmation.admin.inc,v 1.5 2010/07/26 23:41:06 jhedstrom Exp $
 
 /**
  * @file
@@ -12,7 +11,7 @@
 function _cck_signup_group_confirmation_form_node_type_form_alter(&$form, $form_state) {
   $type = $form['old_type']['#value'];
   if ($type) {
-    $options = _cck_signup_nodereference_fields($type);
+    $options = _cck_signup_node_reference_fields($type);
     array_unshift($options, t('-- Choose --'));
     $form['cck_signup']['cck_signup_group']['cck_signup_group_confirmation_field'] = array(
       '#type' => 'select',

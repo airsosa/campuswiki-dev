@@ -1,4 +1,3 @@
-// $Id: cck-signup.js,v 1.1.2.3 2011/01/28 22:55:09 jhedstrom Exp $
 
 (function ($) {
 

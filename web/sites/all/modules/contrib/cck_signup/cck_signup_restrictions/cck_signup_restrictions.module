@@ -1,5 +1,4 @@
 <?php
-// $Id: cck_signup_restrictions.module,v 1.5.4.2 2011/02/03 02:07:29 jhedstrom Exp $
 
 /**
  * @file
@@ -28,7 +27,8 @@ function cck_signup_restrictions_cck_signup_validate($type, $event, &$form_state
       $language = $form_state['values']['language'];
       foreach ($restrictions as $delta => $restriction) {
         $restricted_field = $restriction['value'];
-        // If the count on a restricted field is > 0, this sign-up is invalid and must fail.
+        // If the count on a restricted field is > 0, this sign-up is invalid
+        // and must fail.
         if (!empty($form_state['values'][$restricted_field][$language][0]['value'])) {
           form_set_error($restricted_field, t('This event is restricted for: %restriction', array('%restriction' => $restricted_fields[$restricted_field])));
         }

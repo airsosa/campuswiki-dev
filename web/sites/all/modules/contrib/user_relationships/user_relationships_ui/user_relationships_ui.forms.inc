@@ -122,10 +122,17 @@ function user_relationships_ui_request($form, &$form_state, $requestee) {
     if ($form['rtid']['#default_value']) {
       $relationship = user_relationships_type_load($form['rtid']['#default_value']);
     }
+    // Respect destination param if given.
+    if (isset($_GET['destination'])) {
+      $dest = $_GET['destination'];
+    }
+    else {
+      $dest = "user/$requestee->uid";
+    }
     $form = confirm_form(
       $form,
       t('Request relationship'),
-      "user/$requestee->uid",
+      $dest,
       isset($relationship) ?
       ($relationship->requires_approval
        ? t('Are you sure you want to send a new %rel_name request to !name?', array('%rel_name' => ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name), '%rel_plural_name' => ur_tt("user_relationships:rtid:$relationship->rtid:plural_name", $relationship->plural_name), '!name' => theme('username', array('account' => $requestee))))
@@ -260,11 +267,19 @@ function user_relationships_ui_remove($form, &$form_state, $account, $relationsh
     '#type'   => 'value',
     '#value'  => $viewed_id
   );
+
+  // Respect destination param if given.
+  if (isset($_GET['destination'])) {
+    $dest = $_GET['destination'];
+  }
+  else {
+    $dest = ($viewed_id == $user->uid ? 'relationships' : "user/{$viewed_id}/relationships");
+  }
+
   $output = confirm_form(
     $form,
     t('Remove relationship'),
-    ($viewed_id == $user->uid ? 'relationships' : "user/{$viewed_id}/relationships/"),
-
+    $dest,
     t("Are you sure you want to delete the %relationship_name relationship with !name?", array(
       '%relationship_name'  => ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name),
       '!name'               => theme('username', array('account' => user_load(($viewed_id == $relationship->requester_id ? $relationship->requestee_id : $relationship->requester_id))))

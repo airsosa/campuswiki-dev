@@ -58,7 +58,7 @@ function theme_user_relationship_node_access_form($arguments) {
     $rows[] = $row;
   }
 
-  return theme('table', array('rows' => $rows));
+  return theme('table', array('rows' => $rows)) . drupal_render($form['set_default']);
 }
 
 
@@ -87,14 +87,86 @@ function _user_relationship_node_access_disabling($set = NULL) {
 }
 
 /**
+ * Implements hook_form_BASE_alter().
+ */
+function user_relationship_node_access_form_user_profile_form_alter(&$form, &$form_state, $form_id) {
+  // Allow users to set default settings for sharing content.
+  $form += _user_relationship_node_access_permission_form('user', $form['#user']);
+  if (isset($form['#user']->data['user_relationship_node_access_defaults'])) {
+    $defaults = $form['#user']->data['user_relationship_node_access_defaults'];
+    foreach ($defaults as $key => $value) {
+      $form['user_relationship_node_access'][$key]['#default_value'] = $value;
+    }
+  }
+  $form['user_relationship_node_access']['#description'] = t('Set your default sharing settings when posting new content.');
+}
+
+/**
+ * Implements hook_user_presave().
+ */
+function user_relationship_node_access_user_presave(&$edit, $account, $category) {
+  if (isset($edit['user_relationship_node_access'])) {
+    $edit['data']['user_relationship_node_access_defaults'] = $edit['user_relationship_node_access'];
+  }
+}
+
+/**
  * Implements hook_form_BASE_alter()
  */
 function user_relationship_node_access_form_node_form_alter(&$form, &$form_state, $form_id) {
-  global $user;
-
   // Verify we can set permissions on this node.
-  if ($form['#node']->uid != $user->uid || count($types = user_relationships_types_load()) == 0 || !_user_relationship_node_access_node_eligible($form['#node'])) {
-    return;
+  global $user;
+  if ($form['#node']->uid == $user->uid && count($types = user_relationships_types_load()) > 0 && _user_relationship_node_access_node_eligible($form['#node'])) {
+    $form += _user_relationship_node_access_permission_form('node', $form['#node']);
+    $form['user_relationship_node_access']['set_default'] = array(
+      '#prefix' => '<div id="user-relationship-node-access-set-default">',
+      '#type' => 'button',
+      '#value' => t('Make default'),
+      '#ajax' => array(
+        'callback' => 'user_relationship_node_access_ajax_set_default',
+        'wrapper' => 'user-relationship-node-access-set-default',
+      ),
+      '#limit_validation_errors' => array(),
+      '#suffix' => '</div>',
+    );
+  }
+}
+
+/**
+ * Form callback function to set the default access settings.
+ */
+function user_relationship_node_access_ajax_set_default($form, $form_state) {
+  global $user;
+  $defaults = array('user_relationship_node_access_defaults' => $form_state['values']['user_relationship_node_access']);
+  unset($defaults['user_relationship_node_access_defaults']['set_default']);
+  user_save($user, array('data' => $defaults));
+  drupal_set_message(t("Default sharing settings have been saved."));
+  return $form['user_relationship_node_access']['set_default'];
+}
+
+/**
+ * Helper function to generate the permissions grid for a node edit form or for
+ * a user edit form.
+ *
+ * @param $object_type
+ *   The type of form being viewed. Either 'node' or 'user'.
+ * @param $object
+ *   The object associated with the form being viewed. If $object_type is
+ *   'node', pass the node object. If $object_type is 'user', pass the user
+ *    object.
+ *
+ * @return
+ *   A Form API array suitable for including in another form.
+ */
+function _user_relationship_node_access_permission_form($object_type, $object) {
+  $form = array();
+  $types = user_relationships_types_load();
+  if ($object_type == 'node') {
+    $node = $object;
+    $account = user_load($node->uid);
+  }
+  else {
+    $account = $object;
   }
 
   foreach ($types as $rtid => $type) {
@@ -111,25 +183,32 @@ function user_relationship_node_access_form_node_form_alter(&$form, &$form_state
 
   // reverse the optimization made after saving
   $permissions = array();
-  if (isset($form['#node']->user_relationship_node_access) && is_array($form['#node']->user_relationship_node_access)) {
-    foreach ($form['#node']->user_relationship_node_access as $rtid => $permission) {
+  if ($object_type == 'node' && isset($node->user_relationship_node_access) && is_array($node->user_relationship_node_access)) {
+    foreach ($node->user_relationship_node_access as $rtid => $permission) {
       foreach ($permission as $action => $trash) {
         $permissions[$action][$rtid] = $rtid;
       }
     }
   }
+  else {
+    // There are no permissions set on this node. Pull in the defaults from
+    // the author of the node.
+    if (isset($account->data['user_relationship_node_access_defaults'])) {
+      $permissions = $account->data['user_relationship_node_access_defaults'];
+    }
+  }
 
-  // get permissions that can be set - from node author not current user
-  $author_allowed_perms = _user_relationship_node_access_get_allowed_grants(user_load($form['#node']->uid));
+  // Get permissions that can be set - from node author or the user defaults.
+  $author_allowed_perms = _user_relationship_node_access_get_allowed_grants(user_load($object->uid));
 
   if (!count($author_allowed_perms)) {
-    return;
+    return array();
   }
 
   // use advanced form with a table if more than one permission, otherwise just a simple 'post to related users' checkbox
   $use_advanced_form = count($author_allowed_perms) > 1;
   // different labels for group posts (that have the group audience fieldset)
-  $is_group_post = module_exists('og') && og_is_group_content_type('node', $form['#node']->type);
+  $is_group_post = module_exists('og') && og_is_group_content_type('node', $node->type);
 
   $form['user_relationship_node_access'] = array(
     '#type'         => 'fieldset',
@@ -162,6 +241,8 @@ function user_relationship_node_access_form_node_form_alter(&$form, &$form_state
       $form['user_relationship_node_access'][$action]['#title'] = t('@action', array('@action' => ucfirst($action)));
     }
   }
+
+  return $form;
 }
 
 /**
@@ -233,6 +314,11 @@ function user_relationship_node_access_update_node($node) {
   if (!empty($node->user_relationship_node_access) && count($node->user_relationship_node_access)) {
     // Reformat the array and optimize.
     foreach ($node->user_relationship_node_access as $action => $permissions) {
+      // @todo: The new set_default button results in a warning. Find a better way to avoid a
+      // notice.
+      if (!is_array($permissions)) {
+        continue;
+      }
       foreach ($permissions as $key => $permission) {
         // Make sure user is allowed to set this permission
         if ($allowed_grants[$action] && $permission) {
@@ -313,7 +399,7 @@ function user_relationship_node_access_node_access_records($node) {
     $node->user_relationship_node_access = _user_relationship_node_access_load_node_perms($node->nid);
   }
 
-  if (isset($node->user_relationship_node_access) && is_array($node->user_relationship_node_access)) {
+  if (isset($node->user_relationship_node_access) && is_array($node->user_relationship_node_access) && $node->status) {
     foreach ($node->user_relationship_node_access as $rtid => $permissions) {
       $grants[] = array(
         'realm'         => "user_relationship_node_access_{$rtid}",

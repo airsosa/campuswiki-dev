@@ -87,13 +87,15 @@ class UserRelationshipUserSettings extends DrupalWebTestCase {
       'can request ' . $this->rtypes['oneway']->name . ' relationships',
       'can have ' . $this->rtypes['twoway']->name . ' relationships',
       'can request ' . $this->rtypes['twoway']->name . ' relationships',
-      'view user relationships',
+      'view own twoway relationships',
+      'view own oneway relationships',
     );
     // User without maintain permission.
     $u1 = $this->drupalCreateUser($permissions);
 
     // User without permission for an approval relationship.
-    $permissions[] = 'maintain own relationships';
+    $permissions[] = 'maintain twoway relationships';
+    $permissions[] = 'maintain oneway relationships';
     $u2 = $this->drupalCreateUser($permissions);
 
     // Two users with all required permissions.
@@ -101,6 +103,11 @@ class UserRelationshipUserSettings extends DrupalWebTestCase {
     $permissions[] =  'can request ' . $this->rtypes['approval-oneway']->name . ' relationships';
     $permissions[] =  'can have ' . $this->rtypes['approval']->name . ' relationships';
     $permissions[] =  'can request ' . $this->rtypes['approval']->name . ' relationships';
+    $permissions[] = 'maintain approval relationships';
+    $permissions[] = 'maintain approval-oneway relationships';
+    $permissions[] = 'view own approval relationships';
+    $permissions[] = 'view own approval-oneway relationships';
+
     $u3 = $this->drupalCreateUser($permissions);
     $u4 = $this->drupalCreateUser($permissions);
 

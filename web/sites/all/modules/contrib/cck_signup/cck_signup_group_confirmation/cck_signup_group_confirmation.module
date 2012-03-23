@@ -1,5 +1,4 @@
 <?php
-// $Id: cck_signup_group_confirmation.module,v 1.5.4.1 2011/01/28 21:00:44 jhedstrom Exp $
 
 /**
  * @file
@@ -33,7 +32,8 @@ function cck_signup_group_confirmation_form_alter(&$form, $form_state, $form_id)
  * Implements hook_link_alter().
  */
 function cck_signup_group_confirmation_link_alter(&$links, $node) {
-  // Check if this is a sign-up node, that has a group confirmation field pointing back at it.
+  // Check if this is a sign-up node, that has a group confirmation field
+  // pointing back at it.
   if ($field = variable_get('cck_signup_group_confirmation_field_' . $node->type, FALSE)) {
     // Load the field definition.
     $field = content_fields($field);
@@ -92,7 +92,8 @@ function cck_signup_group_confirmation_nodeapi_OLD(&$node, $op) {
     if ($op == 'insert'
        && ($signup_field = variable_get('cck_signup_group_confirmation_type_' . $node->type, FALSE))
        && !empty($node->{$signup_field})) {
-      // This is a group confirmation, load the signup node and then the event node.
+      // This is a group confirmation, load the signup node and then the event
+      // node.
       $signup = node_load($node->{$signup_field}[0]['nid']);
       $event_field = variable_get('cck_signup_signup_type_' . $signup->type, FALSE);
       $event = node_load($signup->{$event_field}[0]['nid']);
@@ -229,7 +230,7 @@ function cck_signup_group_confirmation_messaging($op, $arg1 = NULL, $arg2 = NULL
             'subject' => t('Subject'),
             'header' => t('Body header'),
             'main' => t('Body'),
-            'footer' => t('Body footer')
+            'footer' => t('Body footer'),
           );
           break;
       }
@@ -254,7 +255,8 @@ function cck_signup_group_confirmation_token_values($type, $object = NULL, $opti
       if ($node = $object) {
         if (($signup_field = variable_get('cck_signup_group_confirmation_type_' . $node->type, FALSE))
            && !empty($node->{$signup_field})) {
-          // This is a group confirmation, load the signup node and then the event node.
+          // This is a group confirmation, load the signup node and then the
+          // event node.
           $signup = node_load($node->{$signup_field}[0]['nid']);
           $event_field = variable_get('cck_signup_signup_type_' . $signup->type, FALSE);
           if ($event_field) {
@@ -271,18 +273,17 @@ function cck_signup_group_confirmation_token_values($type, $object = NULL, $opti
   }
 }
 
-
-
 /**
  * Get a confirmation record for a given event record.
  *
- * @param $event
+ * @param object $event
  *   Event node object.
- * @param $account
+ * @param object $account
  *   User object.
- * @param $existing
+ * @param boolean $existing
  *   Indicates the confirmation is being edited.
- * @return
+ *
+ * @return object
  *   The confirmation node object.
  */
 function cck_signup_group_confirmation_get_confirmation($event, $account = NULL, $existing = FALSE) {

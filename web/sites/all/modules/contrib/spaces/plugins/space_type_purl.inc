@@ -36,7 +36,7 @@ class space_type_purl extends space_type {
       $this->purge_request_destination();
       // @TODO: This will drop other PURL providers. Probably not the desired behavior!
       $purl_params = array(
-        'query' => drupal_http_build_query(drupal_get_query_parameters($_GET, array('q'))),
+        'query' => drupal_get_query_parameters($_GET, array('q')),
         'purl' => array(
           'provider' => "spaces_{$this->type}",
           'id' => $this->id,

@@ -1,4 +1,3 @@
-// $Id: cck-signup-group.js,v 1.6.4.1 2011/02/07 20:39:26 jhedstrom Exp $
 (function ($) {
 Drupal.behaviors.cckSignupGroup = {
   attach: function(context) {

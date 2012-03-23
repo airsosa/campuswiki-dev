@@ -69,7 +69,7 @@
     $.get(href, function(result) {
       $('#user_relationships_popup_form').html(result).slideDown();
       // Making sure the cancel link on each form in the popup closes the popup.
-      $('#user_relationships_popup_form a').click(function() {
+      $('#user_relationships_popup_form .container-inline a').click(function() {
         Drupal.user_relationships_ui.hidePopup();
         return false;
       });

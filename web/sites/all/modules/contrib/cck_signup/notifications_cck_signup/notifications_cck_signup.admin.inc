@@ -1,5 +1,4 @@
 <?php
-// $Id: notifications_cck_signup.admin.inc,v 1.1.4.1 2011/01/28 21:00:44 jhedstrom Exp $
 /**
  * Admin forms for the notifications CCK signup module.
  */

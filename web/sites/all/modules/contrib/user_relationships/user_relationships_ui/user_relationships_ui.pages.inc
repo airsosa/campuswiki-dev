@@ -51,13 +51,16 @@ function user_relationships_page($account = NULL, $rtid = NULL) {
   }
   drupal_set_title($msg, PASS_THROUGH);
 
-  $edit_access = ($user->uid == $account->uid && user_access('maintain own relationships')) || user_access('administer user relationships');
+  $header = user_relationships_ui_get_table_header(user_relationships_ui_check_access('delete', $account, $relationship_type));
+
   $rows = array();
   foreach ($relationships as $relationship) {
-    $rows[$relationship->rid] = user_relationships_ui_get_table_row($relationship, $account, $edit_access);
-  }
-
-  $header = user_relationships_ui_get_table_header($edit_access);
+    $rows[$relationship->rid] = user_relationships_ui_get_table_row($relationship, $account);
+    if (count($rows[$relationship->rid]) < count($header)) {
+      // Add an empty space to the operations table row.
+      $rows[$relationship->rid][] = '&nbsp;';
+    }
+   }
 
   if (!empty($rtid)) {
     $empty = t('You do not have any %plural_name.', array('%plural_name' => ur_tt("user_relationships:rtid:$relationship_type->rtid:plural_name", $relationship_type->plural_name)));
@@ -96,9 +99,8 @@ function user_relationships_pending_requests_page($column, $account = NULL) {
     return MENU_NOT_FOUND;
   }
 
-  $edit_access = ($user->uid == $account->uid && user_access('maintain own relationships')) || user_access('administer user relationships');
-
   if ($column == 'requester_id') {
+    $permission = 'request';
     if ($account->uid == $user->uid) {
       $msg = t('My relationships (sent requests)');
       $empty = t('You have not sent any relationship requests that are currently pending.');
@@ -109,6 +111,7 @@ function user_relationships_pending_requests_page($column, $account = NULL) {
     }
   }
   else {
+    $permission = 'approve';
     if ($account->uid == $user->uid) {
       $msg = t('My relationships (received requests)');
       $empty = t('You have not received any relationship requests that are currently pending.');
@@ -125,17 +128,21 @@ function user_relationships_pending_requests_page($column, $account = NULL) {
     'paging' => variable_get('user_relationships_relationships_per_page', 16),
   );
 
+  $header = user_relationships_ui_get_table_header(user_relationships_ui_check_access($permission, $account));
   $relationships = user_relationships_load(array($column => $account->uid, 'approved' => FALSE), $options);
   $rows = array();
   foreach ($relationships as $relationship) {
-    $rows[] = user_relationships_ui_get_table_row($relationship, $account);
+    $rows[$relationship->rid] = user_relationships_ui_get_table_row($relationship, $account);
+    if (count($rows[$relationship->rid]) < count($header)) {
+      // Add an empty space to the operations table row.
+      $rows[$relationship->rid][] = '&nbsp;';
+    }
   }
-
 
   $output['list'] = array(
     '#theme' => 'table',
     '#rows' => $rows,
-    '#header' => user_relationships_ui_get_table_header($edit_access),
+    '#header' => $header,
     '#empty' => $empty,
     'attributes' => array('class' => array('user-relationships-pending-listing-table')),
   );
@@ -165,30 +172,33 @@ function user_relationships_ui_get_table_row($relationship, $account) {
   $this_user_str  = $account->uid == $relationship->requestee_id ? 'requester' : 'requestee';
   $this_user      = $relationship->{$this_user_str};
 
-  $edit_access = ($user->uid == $account->uid && user_access('maintain own relationships')) || user_access('administer user relationships');
-
   $row = array(
     theme('username', array('account' => $this_user)),
     ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name) . ($relationship->is_oneway ? ($this_user_str == 'requestee' ? t(' (You to Them)') : t(' (Them to You)')) : NULL),
   );
-  if ($edit_access) {
-    $links = array();
-    if ($relationship->approved) {
+
+  $permission = $account->uid == $relationship->requestee_id ? 'request' : 'approve';
+  $links = array();
+  if ($relationship->approved) {
+    if (user_relationships_ui_check_access('delete', $account, $relationship)) {
       $links[] = theme('user_relationships_remove_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
     }
-    else {
-      if ($this_user_str == 'requestee') {
-        // Sent requests, display cancel link.
-        $links[] = theme('user_relationships_pending_request_cancel_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
-      }
-      else {
-        // Received requests, display approve and decline links.
-        $links[] = theme('user_relationships_pending_request_approve_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
-        $links[] = theme('user_relationships_pending_request_disapprove_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
-      }
+  }
+  else if (user_relationships_ui_check_access($permission, $account, $relationship)) {
+    if ($this_user_str == 'requestee') {
+      // Sent requests, display cancel link.
+      $links[] = theme('user_relationships_pending_request_cancel_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
     }
+    else {
+      // Received requests, display approve and decline links.
+      $links[] = theme('user_relationships_pending_request_approve_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
+      $links[] = theme('user_relationships_pending_request_disapprove_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
+    }
+  }
+  if (!empty($links)) {
     $row[] = implode(' ', $links);
   }
+
   if (variable_get('user_relationships_show_user_pictures', 0)) {
     array_unshift($row, theme('user_picture', array('account' => $this_user)));
   }

@@ -213,14 +213,14 @@ function user_relationships_admin_type_edit($form, &$form_state, $relationship_t
     '#type'           => 'checkbox',
     '#title'          => t('This is a one-way relationship'),
     '#default_value'  => isset($relationship_type) ? $relationship_type->is_oneway : NULL,
-    '#description'    => t('Check this if this relationship should only go one way (ex Manager, Subscriber)'),
+    '#description'    => t('This relationship should only go one direction. This might be a manager or teacher.'),
     '#weight'         => -6,
   );
   $form['is_reciprocal'] = array(
     '#type'           => 'checkbox',
     '#title'          => t('This one-way relationship can be reciprocated'),
     '#default_value'  => isset($relationship_type) ? $relationship_type->is_reciprocal : NULL,
-    '#description'    => t('Check if this one-way relationship can go either way'),
+    '#description'    => t('The user who receives this request can create an additional one-way relationship back to the requester. This might be a follower or subscriber.'),
     '#weight'         => -5,
     '#states'         => array(
       'visible'         => array(

@@ -84,9 +84,11 @@ function user_relationship_views_views_data() {
       'filter' => array(
         'handler' => 'views_handler_filter_user_name'
       ),
-      'relationship' => array(// this relationship brings in all fields the users table offers
+      // This relationship brings in all fields the users table offers.
+      'relationship' => array(
         'base' => 'users',
-        'field' => 'uid',
+        'left_field' => 'uid',
+        'field' => 'requester_id',
         'label' => 'requester',
         'help' => t('Bring in data about the user who started the relationship, or link to relationships that they have established'),
       ),
@@ -97,6 +99,14 @@ function user_relationship_views_views_data() {
       'help' => t('Current user who started the relationship'),
       'filter' => array(
         'handler' => 'views_handler_filter_user_current'
+      ),
+      // This relationship brings in all fields the users table offers.
+      'relationship' => array(
+        'base' => 'users',
+        'left_field' => 'uid',
+        'field' => 'requester_id',
+        'label' => 'requester',
+        'help' => t('Bring in data about the user who started the relationship, or link to relationships that they have established'),
       ),
     ),
     'requestee_id' => array(
@@ -117,7 +127,8 @@ function user_relationship_views_views_data() {
       ),
       'relationship' => array(// this relationship brings in all fields the users table offers
         'base' => 'users',
-        'field' => 'uid',
+        'left_field' => 'uid',
+        'field' => 'requestee_id',
         'label' => 'requestee',
         'help' => t('Bring in data about the user who accepted the relationship, or link to relationships that other users have established to this one'),
       ),
@@ -128,6 +139,14 @@ function user_relationship_views_views_data() {
       'help' => t('Current user who accepted the relationship'),
       'filter' => array(
         'handler' => 'views_handler_filter_user_current'
+      ),
+      // This relationship brings in all fields the users table offers.
+      'relationship' => array(
+        'base' => 'users',
+        'left_field' => 'uid',
+        'field' => 'requestee_id',
+        'label' => 'requestee',
+        'help' => t('Bring in data about the user who accepted the relationship, or link to relationships that other users have established to this one'),
       ),
     ),
     'approved' => array(

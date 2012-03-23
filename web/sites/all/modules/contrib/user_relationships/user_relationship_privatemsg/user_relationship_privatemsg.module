@@ -311,7 +311,7 @@ function user_relationship_privatemsg_form_alter(&$form, &$form_state, $form_id)
   if (($form_id == 'user_register_form' || $form_id == 'user_profile_form') && $form['#user_category'] == 'account') {
     // #257748 #458046 for adding the functionality of allowing/disallowing
     // private messages.
-    if (variable_get('user_relationships_restrict_privatemsg', 'all') == 'all_overridable' && user_access('maintain own relationships', $form['#user'])) {
+    if (variable_get('user_relationships_restrict_privatemsg', 'all') == 'all_overridable' && user_access('maintain @relationship relationships', $form['#user'])) {
       $form['privatemsg']['user_relationships_allow_private_message'] = array(
         '#type' => 'radios',
         '#title' => t('Allow private messages from...'),
