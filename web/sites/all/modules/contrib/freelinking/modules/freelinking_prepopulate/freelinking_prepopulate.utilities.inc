@@ -27,13 +27,14 @@ function freelinking_prepopulate_fields_from_page($fields, $plugin = 'nodecreate
   $query = array();
   $index = $plugin . serialize($fields);
   if (!$prepopulate[$index]) {
-if (is_array(freelinking_prepopulate_list_fields($plugin))) {
     $prepopulate[$index] = array_intersect_key(freelinking_prepopulate_list_fields($plugin), $fields);
   }
-}
 
-  if (isset($prepopulate[$index]) && is_array($prepopulate[$index])) {
-    foreach ($prepopulate[$index] as $field => $definition) {
+  if ($plugin == 'nodecreate' && arg(0) == 'node' && is_numeric(arg(1)) && !arg(2)) {
+    $object = node_load(arg(1));
+  }
+
+  foreach ($prepopulate[$index] as $field => $definition) {
     switch ($field) {
       case 'og':
         $group = og_get_group_context();
@@ -59,7 +60,6 @@ if (is_array(freelinking_prepopulate_list_fields($plugin))) {
         break;
     }
   }
-  }
   return $query;
 }
 
@@ -75,10 +75,7 @@ if (is_array(freelinking_prepopulate_list_fields($plugin))) {
  */
 function freelinking_prepopulate_fields_from_array($plugin, $target) {
   $query = array();
-  if (is_array($target && freelinking_prepopulate_list_fields($plugin))) {
-    $prepopulate[] = array_intersect_key(freelinking_prepopulate_list_fields($plugin), $target);
-  }
-  if (isset($prepopulate)) {
+  $prepopulate = array_intersect_key(freelinking_prepopulate_list_fields($plugin), $target);
   foreach ($prepopulate as $field => $values) {
     // If it's an organic group, break the groups out to separate values.
     if ($field == 'og') {
@@ -104,8 +101,8 @@ function freelinking_prepopulate_fields_from_array($plugin, $target) {
     }
   }
   return $query;
-  }
 }
+
 
 
 /**
@@ -185,7 +182,6 @@ function freelinking_prepopulate_list_fields($plugin = 'nodecreate', $field = NU
       // To Be Implemented
     }
   }
-if (is_array($fields && $plugins[$plugin])) {
+
   return array_intersect_key($fields, $plugins[$plugin]);
-  }
 }

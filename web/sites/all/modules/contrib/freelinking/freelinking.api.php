@@ -15,7 +15,7 @@
  * @see http://drupal.org/node/???
  */
 function hook_freelinking() {
-  $plugins['myplugin'] = array(
+  $plugins['myplugin'] array(
     'indicator' => '/myplugin/',
     'translate' => array(' ' => '_'),
     'replacement' => 'http://example.com/node/%1',

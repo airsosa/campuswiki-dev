@@ -45,7 +45,7 @@ function freelinking_filter_info() {
     'tips callback' => '_freelinking_tips',
   );
   return $filters;
-}
+} 
 
 /**
  * Implements filter process callback
@@ -136,9 +136,10 @@ function _freelinking_tips($delta, $format, $long = FALSE) {
   $text .= '<br />';
   $text .= t('Below is a list of available types of freelinks you may use, organized as <strong>Plugin Name</strong>: <em>[indicator]</em>.');
 
+  $tips = array();
   foreach ($plugins as $name => $plugin) {
     $tips[$name] = '<strong>' . drupal_ucfirst($name) . '</strong> <em>[' . $plugin['indicator'] . ']</em>';
-    if ($plugin['tip']) {
+    if (isset($plugin['tip'])) {
       $tips[$name] .= ' — ' . $plugin['tip'];
     }
   }
@@ -191,7 +192,7 @@ function freelinking_freelink_alter(&$link, $context) {
   if (!$link[0]) {
     $link[0] = $target['text'] ? $target['text'] : $target['target'];
   }
-
+  
   // support html link text unless plugin overrides
   if (isset($plugin['html']) && $plugin['html'] !== FALSE) {
     $link[2]['html'] = TRUE;
@@ -259,7 +260,7 @@ function _freelinking_build_freelink($freelinking, $plugin_name, $target) {
   // Standardize link, grab authoritative "structured" version
   // designate the rendered text for display
   if (is_array($link)) {
-    if (isset($link['failover']) && $link['failover'] != 'error' &&
+    if (isset($link['failover']) && $link['failover'] != 'error' && 
         $link['failover'] != 'none') {
       $target = isset($link['target']) ? $link['target'] : $target;
       $target['other']['trace'][] = $plugin_name;
@@ -391,7 +392,7 @@ function _freelinking_match_pattern($separator = NULL) {
   $option['double_bracket'] =
     '/(?<!\\\\)\[\[([A-Za-z0-9]{1}.+' . $separator . '?.+|.+)]]/Uu';
   $option['single_bracket'] =
-    '/(?<!\\\\)\[(.+' . $separator . '?.+|.+)]/Uu';
+    '/(?<!\\\\)\[(.+' . $separator . '?+|.+)]/Uu';
   $option['markdown'] =
     '/(?<!\\\\)(\[([^\]]+)\]\((.+)(?:' . $separator . '(.+))?(?:\s"(.+)")?\))/Uu';
   return $option;
