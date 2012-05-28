@@ -60,7 +60,7 @@ function freelinking_nodetitle_settings() {
     $failover_option['create'] = t('Add a link to create content. (Without Permission: Access Denied)');
   }
   else {
-    $extra_description = '<br /><strong>'
+    $extra_description .= '<br /><strong>'
       . t('Note: Enable %module for Content Creation option.', array('%module' => 'Freelinking Create'))
       . '</strong>';
   }
@@ -70,7 +70,7 @@ function freelinking_nodetitle_settings() {
     $failover_option['search'] = t('Add a link to Search Content');
   }
   else {
-    $extra_description = '<br /><strong>'
+    $extra_description .= '<br /><strong>'
       . t('Note: Enable the %module module for internal search option.', array('%module' => 'Search'))
       . '</strong>';
     // if search is unavailable offer it's own (applicable)search fallback. [Google, etc]
@@ -80,6 +80,8 @@ function freelinking_nodetitle_settings() {
     }
   }
   $failover_option['error'] = t('Insert an error message');
+
+  $failover_option['showtext'] = t('Show text');
 
   $form['freelinking_nodetitle_failover'] = array(
     '#title' => t('If a suitable content is not found'),
@@ -155,11 +157,14 @@ function _freelinking_nodetitle_failure($target) {
   switch ($failover) {
     case 'create':
       return array('failover' => 'createnode', 'target' => $target);
+    case 'showtext':
+      return array('failover' => 'showtext', 'target' => $target);
     case 'search':
       return array('failover' => 'search', 'target' => $target);
     case 'error':
       return array('failover' => 'error', 'message' => t('%title not found',
         array('%title' => $target['dest'])));
+
   }
   // do nothing
   return FALSE;
