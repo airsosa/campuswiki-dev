@@ -54,21 +54,25 @@ class statuses_tags_views_handler_field_all_terms extends views_handler_field {
   function render($values) {
     $options = $this->options;
     $sid = $values->{$this->field_alias};
-    $query = "SELECT rid tid, name, type FROM {statuses_tags} WHERE sid = %d";
+    $query = db_select('statuses_tags')
+      ->fields('statuses_tags', array('name', 'type'));
+    $query->addField('statuses_tags', 'rid', 'tid');
+    $query->condition('sid', $sid);
+    $db_or = db_or();
     if (count($options['statuses_tags_type']) > 1) {
-      $query .= " AND (type = '";
-      $types = array();
       foreach ($options['statuses_tags_type'] as $type => $val) {
         if ($val) {
-          $types[] = $type;
+          $db_or->condition('type', $type);
         }
       }
-      $query .= implode("' OR type = '", $types) . "')";
+      $query->condition($db_or);
     }
-    $query .= " ORDER BY type ASC, name ASC";
-    $result = db_query($query, $sid);
+    $result = $query->orderBy('type')
+      ->orderBy('name')
+      ->execute()
+      ->fetchAll();
     $tags = array();
-    while ($tag = db_fetch_object($result)) {
+    foreach ($result as $tag) {
       $prefix = '';
       if ($options['statuses_tags_show_symbol']) {
         if ($tag->type == 'term') {
@@ -83,7 +87,7 @@ class statuses_tags_views_handler_field_all_terms extends views_handler_field {
           $tags[] = $prefix . l($tag->name, _statuses_tags_resolve($tag));
         }
         elseif ($tag->type == 'user') {
-          $tags[] = $prefix . theme('username', array('account' => _statuses_user_load($tag->tid)));
+          $tags[] = $prefix . theme('username', array('account' => user_load($tag->tid)));
         }
         else {
           $tags[] = check_plain($tag->name);

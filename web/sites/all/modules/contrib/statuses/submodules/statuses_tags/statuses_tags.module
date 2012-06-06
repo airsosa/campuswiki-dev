@@ -345,7 +345,7 @@ function statuses_tags_popular($type = 'term', $count = 5, $time = 'all', $optio
       'week' => 604800,
       'month' => 2592000,
       'year' => 31449600,
-      'all' => 0,
+      'all' => $now,
     );
     $time = $now - $times[$time];
   }
@@ -463,7 +463,7 @@ function _statuses_tags_filter($subject, $new = FALSE) {
       $link = '';
       if ($op == '@') {
         $account = user_load_by_name($match);
-        if ($account->uid) {
+        if (isset($account->uid)) {
           $link = $op . theme('username', array('account' => $account));
           $items['@'][] = $account;
         }

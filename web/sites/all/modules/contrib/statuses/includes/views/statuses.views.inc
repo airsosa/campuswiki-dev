@@ -300,6 +300,11 @@ function statuses_views_data() {
     'filter' => array(
       'handler' => 'views_handler_filter_date',
     ),
+    'argument' => array(
+      'handler' => 'statuses_views_handler_argument_created',
+      'field' => 'created',
+      'title' => t('Created time (YYYYMMDD)'),
+    ),
   );
 
   // Declares the status text column.
@@ -365,7 +370,7 @@ function statuses_views_data() {
     ),
   );
 
-  if (module_exists('user_relationships_api')) {
+  if (module_exists('user_relationships')) {
     // Expose data from a user's friends AND that user.
     $data['user_relationships']['rels_and_me'] = array(
       'title' => t('Requestee or Requester or Argument user'),
@@ -378,91 +383,6 @@ function statuses_views_data() {
   }
 
   return $data;
-}
-
-/**
- * Implementation of hook_views_handlers().
- */
-function statuses_views_handlers() {
-  return array(
-    'info' => array(
-      'path' => drupal_get_path('module', 'statuses') . '/includes/views/handlers',
-    ),
-    'handlers' => array(
-      'statuses_views_handler_argument_communicated' => array(
-        'parent' => 'views_handler_argument',
-      ),
-      'statuses_views_handler_argument_participant' => array(
-        'parent' => 'views_handler_argument',
-      ),
-      'statuses_views_handler_argument_rels_and_me' => array(
-        'parent' => 'views_handler_argument',
-      ),
-      'statuses_views_handler_field_classes' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_created' => array(
-        'parent' => 'views_handler_field_date',
-      ),
-      'statuses_views_handler_field_cross' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_cross_pic' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_current_uid' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_delete' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_edit' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_last' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_message' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_recipient' => array(
-        'parent' => 'views_handler_field_user',
-      ),
-      'statuses_views_handler_field_recipient_pic' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_repost' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_respond' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_field_sender_pic' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'statuses_views_handler_filter_autotype' => array(
-        'parent' => 'views_handler_filter',
-      ),
-      'statuses_views_handler_filter_communicated' => array(
-        'parent' => 'views_handler_filter',
-      ),
-      'statuses_views_handler_filter_latest_only' => array(
-        'parent' => 'views_handler_filter_boolean_operator',
-      ),
-      'statuses_views_handler_filter_participant' => array(
-        'parent' => 'views_handler_filter',
-      ),
-      'statuses_views_handler_filter_not_own' => array(
-        'parent' => 'views_handler_filter_boolean_operator',
-      ),
-      'statuses_views_handler_filter_own' => array(
-        'parent' => 'views_handler_filter_boolean_operator',
-      ),
-      'statuses_views_handler_filter_type' => array(
-        'parent' => 'views_handler_filter_in_operator',
-      ),
-    ),
-  );
 }
 
 /**
