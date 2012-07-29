@@ -15,7 +15,7 @@
  * @see http://drupal.org/node/???
  */
 function hook_freelinking() {
-  $plugins['myplugin'] array(
+  $plugins['myplugin'] = array(
     'indicator' => '/myplugin/',
     'translate' => array(' ' => '_'),
     'replacement' => 'http://example.com/node/%1',
@@ -56,7 +56,7 @@ function hook_freelink_alter(&$link, $target, $plugin_name, $plugin) {
     unset($link[2]['attributes']['title']);
   }
   elseif ($plugin_name == 'green_link') {
-    $link[2]['attributes']['class'] .= ' green';
+    $link[2]['attributes']['class'][] = 'green';
   }
 }
 

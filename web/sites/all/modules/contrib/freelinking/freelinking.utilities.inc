@@ -38,11 +38,14 @@ function freelinking_get_freelink($plugin, $target, $format = 'all', $rendered =
   }
   if (isset($link['failover'])) {
     if ($link['failover'] == 'error') {
-      return theme('freelink_error', array($plugin, $link['message']));
+      return theme('freelink_error', array('plugin' => $plugin, 'message' => $link['message']));
     }
     if ($link['failover'] == 'none') {
       return FALSE;
     }
+  }
+  if (isset($link['error'])) {
+    return theme('freelink_error', array('plugin' => $plugin, 'message' => $link['error']));
   }
   
   if (function_exists('theme_freelink_' . $plugin)) {

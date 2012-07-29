@@ -11,7 +11,7 @@ require DRUPAL_ROOT . '/' . (drupal_get_path('module', 'freelinking') . '/freeli
  * Implements hook_menu().
  */
 function freelinking_menu() {
-  $items['admin/config/freelinking'] = array(
+  $items['admin/config/content/freelinking'] = array(
     'title' => 'Freelinking settings',
     'description' => 'Configure settings for the freelinking input filter',
     'page callback' => 'drupal_get_form',
@@ -208,21 +208,21 @@ function freelinking_freelink_alter(&$link, $context) {
   }
 
   // standard set of CSS classes
-  $link[2]['attributes']['class'] = rtrim('freelink freelink-' . strtr($plugin_name, ' ', '-') .
-    ' ' . (isset($link[2]['attributes']['class'])?$link[2]['attributes']['class']:''));
+  $link[2]['attributes']['class'][] = 'freelink';
+  $link[2]['attributes']['class'][] = 'freelink-' . strtr($plugin_name, ' ', '-');
 
   // There was more than one effort to generate the link
   if (isset($target['other']['trace'])) {
-    $link[2]['attributes']['class'] .= ' notfound';
+    $link[2]['attributes']['class'][] = 'notfound';
   }
 
   // Is this an internal or external link?
   $parts = parse_url($link[1]);
   if (isset($parts['host']) && $parts['host'] != $_SERVER['SERVER_NAME']) {
-    $link[2]['attributes']['class'] .= ' freelink-external';
+    $link[2]['attributes']['class'][] = 'freelink-external';
   }
   else {
-    $link[2]['attributes']['class'] .= ' freelink-internal';
+    $link[2]['attributes']['class'][] = 'freelink-internal';
   }
 }
 

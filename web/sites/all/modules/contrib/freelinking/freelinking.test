@@ -93,14 +93,14 @@ class FreelinkingTest extends DrupalWebTestCase {
                     '  <li>Nid:            [[nid:2]]</li>' .
                     '  <li>Google:         [[google:drupal]]</li>' .
                     '  <li>File:           [[file:logo.png]]</li>' .
-                    '  <li>Wikisource:     [[wikisource:Main Page]]</li>' .
-                    '  <li>Wiktionary:     [[wiktionary:Main Page]]</li>' .
+                    '  <li>Wikipedia:      [[wikipedia:Main_Page]]</li>' .
                     '  <li>Wikiquote:      [[wikiquote:Main Page]]</li>' .
-                    '  <li>Wikibooks:      [[wikibooks:Main Page]]</li>' .
+                    '  <li>Wiktionary:     [[wiktionary:Main Page]]</li>' .
                     '  <li>Wikinews:       [[wikinews:Main Page]]</li>' .
+                    '  <li>Wikisource:     [[wikisource:Main Page]]</li>' .
+                    '  <li>Wikibooks:      [[wikibooks:Main Page]]</li>' .
                     '  <li>User:           [[u:' . $this->privileged_user->uid . ']]</li>' .
                     '  <li>Path:           [[path:/node/3]]</li>' .
-                    '  <li>Wikipedia:      [[wikipedia:Main_Page]]</li>' .
                     '</ul>' .
                     '<p>Testing compatibility with other modules</p>' .
                     '<ul>' .
@@ -143,6 +143,11 @@ class FreelinkingTest extends DrupalWebTestCase {
     $this->assertLinkByHref('http://en.wikipedia.org/wiki/Main_Page', 0,
                             t('Wikipedia freelink was generated successfully.'));
     $this->pass(t('Verifying compatibility with other modules...'));
-    $this->assertNoPattern(t('/Plugin .* Not Found/'), t('Media tag was not parsed by freelinking module.'));
+    if (module_exists('media')) {
+      $this->assertNoPattern(t('/Plugin .* Not Found/'), t('Media tag was not parsed by freelinking module.'));
+    }
+    else {
+      $this->pass(t('Media module is not intalled: ignoring.'));
+    }
   }
 }

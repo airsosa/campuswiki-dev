@@ -33,14 +33,14 @@ $freelinking['wiktionary'] = array(
 );
 
 $freelinking['wikinews'] = array(
-  'indicator' => '/w(ikinews|n)/',
+  'indicator' => '/w(ikinews|\n)/',
   'translate' => array(' ' => '_'),
   'replacement' => 'http://' . variable_get('freelinking_wikipedia_languagecode', language_default('language')) . '.wikinews.org/wiki/%1',
   'tip' => t('Link to a wikinews page.'),
 );
 
 $freelinking['wikisource'] = array(
-  'indicator' => '/w(ikisource|s)/',
+  'indicator' => '/^w(ikisource|s)/',
   'translate' => array(' ' => '_'),
   'replacement' => 'http://' . variable_get('freelinking_wikipedia_languagecode', language_default('language')) . '.wikisource.org/wiki/%1',
   'tip' => t('Link to a wikisource page.'),

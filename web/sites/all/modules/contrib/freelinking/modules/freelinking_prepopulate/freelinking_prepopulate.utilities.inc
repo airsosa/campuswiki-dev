@@ -27,37 +27,41 @@ function freelinking_prepopulate_fields_from_page($fields, $plugin = 'nodecreate
   $query = array();
   $index = $plugin . serialize($fields);
   if (!$prepopulate[$index]) {
-    $prepopulate[$index] = array_intersect_key(freelinking_prepopulate_list_fields($plugin), $fields);
+    if (is_array(freelinking_prepopulate_list_fields($plugin))) {
+      $prepopulate[$index] = array_intersect_key(freelinking_prepopulate_list_fields($plugin), $fields);
+    }
   }
 
   if ($plugin == 'nodecreate' && arg(0) == 'node' && is_numeric(arg(1)) && !arg(2)) {
     $object = node_load(arg(1));
   }
 
-  foreach ($prepopulate[$index] as $field => $definition) {
-    switch ($field) {
-      case 'og':
-        $group = og_get_group_context();
-        $query[$definition['prepopulate']] = $group->nid;
-        break;
-      case 'taxonomy':
-        if (!$object->taxonomy) {
+  if (isset($prepopulate[$index]) && is_array($prepopulate[$index])) {
+    foreach ($prepopulate[$index] as $field => $definition) {
+      switch ($field) {
+        case 'og':
+          $group = og_get_group_context();
+          $query[$definition['prepopulate']] = $group->nid;
           break;
-        }
-        foreach ($object->taxonomy as $term) {
-          $query[$definition['prepopulate'] . '[' . $term->vid . ']'] .= $term->name . ',';
-        }
-        break;
-      case 'book':
-        if ($node->book) {
-          $query['parent'] = $object->book['mlid'];
-        }
-        break;
-      default:
-        if ($object->$field) {
-          $query[$definition['prepopulate']] = $object->field;
-        }
-        break;
+        case 'taxonomy':
+          if (!isset($object) || !$object->taxonomy) {
+            break;
+          }
+          foreach ($object->taxonomy as $term) {
+            $query[$definition['prepopulate'] . '[' . $term->vid . ']'] .= $term->name . ',';
+          }
+          break;
+        case 'book':
+          if ($node->book) {
+            $query['parent'] = $object->book['mlid'];
+          }
+          break;
+        default:
+          if ($object->$field) {
+            $query[$definition['prepopulate']] = $object->field;
+          }
+          break;
+      }
     }
   }
   return $query;
@@ -75,29 +79,33 @@ function freelinking_prepopulate_fields_from_page($fields, $plugin = 'nodecreate
  */
 function freelinking_prepopulate_fields_from_array($plugin, $target) {
   $query = array();
-  $prepopulate = array_intersect_key(freelinking_prepopulate_list_fields($plugin), $target);
-  foreach ($prepopulate as $field => $values) {
-    // If it's an organic group, break the groups out to separate values.
-    if ($field == 'og') {
-      $query[$values['prepopulate']] = $target[$field];
-    }
-    // If it's a taxonomy, special handling of vocabulary is necessary.
-    elseif ($field == 'taxonomy') {
-      if (!strpos($target[$field], ':')) {
-        $query[$values['prepopulate'] . '[1]'] = $target[$field];
-        continue;
+  if (is_array($target && freelinking_prepopulate_list_fields($plugin))) {
+    $prepopulate[] = array_intersect_key(freelinking_prepopulate_list_fields($plugin), $target);
+  }
+  if (isset($prepopulate)) {
+    foreach ($prepopulate as $field => $values) {
+      // If it's an organic group, break the groups out to separate values.
+      if ($field == 'og') {
+        $query[$values['prepopulate']] = $target[$field];
       }
-      list($vocab, $terms) = explode(':', $target[$field]);
+      // If it's a taxonomy, special handling of vocabulary is necessary.
+      elseif ($field == 'taxonomy') {
+        if (!strpos($target[$field], ':')) {
+          $query[$values['prepopulate'] . '[1]'] = $target[$field];
+          continue;
+        }
+        list($vocab, $terms) = explode(':', $target[$field]);
 
-      if (is_int($vocab)) {
-        $query[$values['prepopulate'] . '[' . $vocab . ']'] = $terms;
+        if (is_int($vocab)) {
+          $query[$values['prepopulate'] . '[' . $vocab . ']'] = $terms;
+        }
+        else {
+          $query[$values['prepopulate'] . '[1]'] = $terms;
+        }
       }
       else {
-        $query[$values['prepopulate'] . '[1]'] = $terms;
+        $query[$values['prepopuplate']] = $target[$field];
       }
-    }
-    else {
-      $query[$values['prepopuplate']] = $target[$field];
     }
   }
   return $query;
@@ -182,6 +190,7 @@ function freelinking_prepopulate_list_fields($plugin = 'nodecreate', $field = NU
       // To Be Implemented
     }
   }
-
-  return array_intersect_key($fields, $plugins[$plugin]);
+  if (is_array($fields && $plugins[$plugin])) {
+    return array_intersect_key($fields, $plugins[$plugin]);
+  }
 }
