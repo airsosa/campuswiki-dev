@@ -22,10 +22,12 @@
 function fbss_privacy_permission() {
   return array(
     'send private status messages' => array(
-      'title' => t('Send private status messages'),
+      'title' => t('send private status messages'),
+      'description' => t('TODO Add a description for \'send private status messages\''),
     ),
     'view all private status messages' => array(
-      'title' => t('View all private status messages'),
+      'title' => t('view all private status messages'),
+      'description' => t('TODO Add a description for \'view all private status messages\''),
     ),
   );
 }
@@ -84,7 +86,7 @@ function fbss_privacy_preprocess_statuses_item(&$vars) {
 }
 
 /**
- * Implementation of hook_statuses_link_alter().
+ * Implementation of hook_facebook_status_link_alter().
  */
 function fbss_privacy_statuses_link_alter(&$links, $status) {
   if (isset($links['respond']) && !empty($status->private)) {

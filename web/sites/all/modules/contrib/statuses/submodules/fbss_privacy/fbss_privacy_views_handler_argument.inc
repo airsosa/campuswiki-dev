@@ -28,30 +28,28 @@ class fbss_privacy_views_handler_argument extends views_handler_argument {
       '#description' => t('If you an option that shows private messages, only private status messages which the user is permitted to see will be shown.'),
     );
   }
-  function query($group_by = FALSE) {
+  function query() {
     global $user;
     $argument = $this->argument;
     $privacy = $this->options['privacy'];
-    $table_alias = $this->ensure_my_table();
+    $query = "{statuses}.private = %d";
     // The argument user must have participated in the status message.
-    $this->query->add_where('fbss_privacy', db_or()
-      ->condition("$table_alias.sender", $argument)
-      ->condition(db_and()->condition("$table_alias.recipient", $argument)->condition("$table_alias.type", 'user')));
+    $this->query->add_where('fbss_privacy', db_prefix_tables("{statuses}.sender = %d OR ({statuses}.recipient = %d AND {facebook_status}.type = 'user')"), $argument, $argument);
     // Show only private or only non-private status messages.
     if (is_numeric($privacy)) {
       // Only show private messages if the current is the argument user or has admin permissions.
       if (!$privacy || $user->uid == $argument || user_access('view all private status messages')) {
-        $this->query->add_where('fbss_privacy', "$table_alias.private", $privacy);
+        $this->query->add_where('fbss_privacy', db_prefix_tables($query), $privacy);
       }
       else {
         // Return no results.
-        $this->query->add_where('fbss_privacy', db_and()->condition("$table_alias.private", 0)->condition("$table_alias.private", 1));
+        $this->query->add_where('fbss_privacy', db_prefix_tables("$query AND $query"), 0, 1);
       }
     }
     // Show private and non-private messages.
     elseif ($user->uid != $argument && !user_access('view all private status messages')) {
       // Return no results if the current user is not the argument user and has no admin permissions.
-      $this->query->add_where('fbss_privacy', db_and()->condition("$table_alias.private", 0)->condition("$table_alias.private", 1));
+      $this->query->add_where('fbss_privacy', db_prefix_tables("$query AND $query"), 0, 1);
     }
   }
 }

@@ -25,10 +25,9 @@ class statuses_views_handler_filter_participant extends views_handler_filter {
   function query() {
     $this->query->add_where(
       $this->options['group'],
-      db_or()
-        ->condition("sender", $this->value)
-        ->condition(db_and()
-          ->condition("recipient", $this->value)
-          ->condition("type", 'user')));
+      "$this->table.sender = %d OR ($this->table.recipient = %d AND $this->table.type = 'user')",
+      $this->value,
+      $this->value
+    );
   }
 }

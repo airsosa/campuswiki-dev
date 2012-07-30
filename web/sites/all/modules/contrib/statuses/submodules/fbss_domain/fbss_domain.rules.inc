@@ -13,25 +13,18 @@ function fbss_domain_rules_condition_info() {
     'fbss_domain_uses_domain' => array(
       'label' => t('Status was posted in a specific domain'),
       'arguments' => array(
-        'status' => array(
-          'type' => 'statuses',
-          'label' => t('The status')
-        ),
-        'domain_id' => array(
-          'type' => 'list<integer>',
-          'label' => t('Status is associated with domain'),
-          'options list' => 'fbss_domain_get_domain_options',
-        ),
+        'status' => array('type' => 'statuses', 'label' => t('The status')),
       ),
-      'group' => t('Statuses'),
+      'module' => 'Statuses',
     ),
   );
 }
 
 /**
- * Generate the options for uses_domain condition
+ * Builds the form for the fbss_domain_uses_domain condition.
  */
-function fbss_domain_get_domain_options(){
+function fbss_domain_uses_domain_form($settings, &$form) {
+  $settings += array('domain_id' => 0);
   $options = array();
   foreach (domain_domains() as $data) {
     // Cannot pass zero in checkboxes.
@@ -42,22 +35,24 @@ function fbss_domain_get_domain_options(){
       $options[$key] = empty($format) ? check_plain($data['sitename']) : $data['sitename'];
     }
   }
-  return $options;
+  $form['settings']['domain_id'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Status is associated with domain'),
+    '#default_value' => $settings['domain_id'],
+    '#options' => $options,
+    '#required' => TRUE,
+  );
 }
 
 /**
  * Checks if the status is associated with one of the chosen domains.
  */
-function fbss_domain_uses_domain($status, $domain_ids) {
-  $domains = array_filter($domain_ids);
+function fbss_domain_uses_domain($status, $settings) {
+  $domains = array_filter($settings['domain_id']);
   if (isset($domains[-1])) {
     $domains[0] = 0;
     unset($domains[-1]);
   }
-  $domain_id = db_select('fbss_domain')
-    ->fields('fbss_domain', array('domain_id'))
-    ->condition('sid', $status->sid)
-    ->execute()
-    ->fetchField();
+  $domain_id = db_query("SELECT domain_id FROM {fbss_domain} WHERE sid = :sid", array(':sid' => $status->sid))->fetchField();
   return in_array($domain_id, $domains);
 }

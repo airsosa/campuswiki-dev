@@ -92,6 +92,9 @@ function fbss_comments_edit($form, $form_state, $comment) {
     '#value' => t('Update'),
   );
   $form['#cid'] = $comment->cid;
+  if (module_exists('modalframe')) {
+    modalframe_child_js();
+  }
   return $form;
 }
 
@@ -99,10 +102,14 @@ function fbss_comments_edit($form, $form_state, $comment) {
  * The submit handler for the edit form for status comments.
  */
 function fbss_comments_edit_submit($form, &$form_state) {
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query("UPDATE {fbss_comments} SET comment = '%s' WHERE cid = %d", $form_state['values']['status-comment-edit'], $form['#cid']) */
   db_update('fbss_comments')
-    ->fields(array('comment' => $form_state['values']['status-comment-edit']))
-    ->condition('cid', $form['#cid'])
-    ->execute();
+  ->fields(array(
+    'comment' => $form_state['values']['status-comment-edit'],
+  ))
+  ->condition('cid', $form['#cid'])
+  ->execute();
   $c = fbss_comments_load($form['#cid']);
   module_invoke_all('fbss_comments_after_save', $c, TRUE);
   if (module_exists('trigger')) {
@@ -115,6 +122,9 @@ function fbss_comments_edit_submit($form, &$form_state) {
     $form_state['redirect'] = '<front>';
   }
   drupal_set_message(t('Status comment has been successfully edited.'));
+  if (module_exists('modalframe')) {
+    modalframe_close_dialog();
+  }
 }
 
 /**
@@ -140,6 +150,9 @@ function fbss_comments_delete($form, $form_state, $comment) {
     '#submit' => array('fbss_comments_delete_cancel'),
   );
   $form['#cid'] = $comment->cid;
+  if (module_exists('modalframe')) {
+    modalframe_child_js();
+  }
   return $form;
 }
 
@@ -155,6 +168,9 @@ function fbss_comments_delete_confirm($form, &$form_state) {
   else {
     $form_state['redirect'] = '<front>';
   }
+  if (module_exists('modalframe')) {
+    modalframe_close_dialog();
+  }
 }
 
 /**
@@ -162,10 +178,13 @@ function fbss_comments_delete_confirm($form, &$form_state) {
  */
 function fbss_comments_delete_cancel($form, &$form_state) {
   drupal_set_message(t('Status comment was not deleted.'));
-  if ($_GET['destination'] && $_GET['destination'] != 'fbss_comments/js/refresh') {
+  if ($_GET['destination'] && $_GET['destinaton'] != 'fbss_comments/js/refresh') {
     $form_state['redirect'] = $_GET['destination'];
   }
   else {
     $form_state['redirect'] = '<front>';
+  }
+  if (module_exists('modalframe')) {
+    modalframe_close_dialog();
   }
 }

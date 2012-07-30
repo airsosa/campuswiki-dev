@@ -36,7 +36,7 @@ function fbss_notifications_menu() {
       'access callback' => FALSE,
       'title' => $info['title'] . ' statuses',
       'page callback' => 'fbss_notifications_page_type',
-      'page arguments' => array(1),
+      'pàge arguments' => array(1),
       'weight' => 30,
       'file' => 'fbss_notifications.pages.inc',
     );
@@ -57,13 +57,12 @@ function fbss_notifications_menu() {
 function fbss_notifications_permission() {
   $perms = array(
     'subscribe to a status stream' => array(
-      'title' => t('Subscribe to a status stream'),
+      'title' => t('subscribe to a status stream'),
+      'description' => t('TODO Add a description for \'subscribe to a status stream\''),
     ),
   );
   if (module_exists('fbss_comments')) {
-    $perms['subscribe to comments on a status'] = array(
-      'title' => t('Subscribe to comments on a status'),
-    );
+    $perms[] = 'subscribe to comments on a status';
   }
   return $perms;
 }
@@ -73,13 +72,13 @@ function fbss_notifications_permission() {
  */
 function fbss_notifications_statuses_delete($status) {
   db_query("
-    DELETE ns, nf
-    FROM {notifications} ns
-    INNER JOIN {notifications_fields} nf
-      ON ns.sid = nf.sid
+    DELETE {notifications}, {notifications_fields}
+    FROM {notifications} n
+    INNER JOIN {notifications_fields} f
+      ON n.sid = f.sid
     WHERE
-      (ns.event_type = 'status' AND nf.intval = %d) OR
-      (ns.event_type = 'stream' AND nf.intval = %d)
+      (n.event_type = 'status' AND f.intval = %d) OR
+      (n.event_type = 'stream' AND f.intval = %d)
   ", $status->sid, $status->recipient);
 }
 
@@ -381,7 +380,7 @@ function fbss_notifications_notifications($op, &$arg0 = NULL, $arg1 = NULL, $arg
       $options = array();
       if (in_array('user', array_values(variable_get('fbss_notifications_link', array('user' => 'user', 'node' => 0, 'og' => 'og'))))) {
         $options[] = array(
-          'name' => t('All status updates by @name', array('@name' => format_username($arg1))),
+          'name' => t('All status updates by @name', array('@name' => $arg1->name)),
           'type' => 'user-stream',
           'fields' => array(
             'recipient' => $arg1->uid,

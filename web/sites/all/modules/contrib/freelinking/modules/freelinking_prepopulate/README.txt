@@ -19,3 +19,4 @@ the process of extracting information for such fields.
 
 ## Maintainers
 Grayside <grayside@gmail.com> http://drupal.org/user/346868
+Juampy http://drupal.org/user/682736

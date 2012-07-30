@@ -11,7 +11,7 @@
 function statuses_tags_views_default_views_alter(&$views) {
   // We can't assume that $views always contains the full set of Views;
   // one case where it doesn't is when evaluating Features.
-  if (!isset($views['statuses_tags'])) {
+  if (!isset($views['facebook_status_tags'])) {
     return;
   }
 
@@ -157,4 +157,41 @@ function statuses_tags_views_data() {
   );
 
   return $data;
+}
+
+/**
+ * Implements hook_views_handlers().
+ */
+function statuses_tags_views_handlers() {
+  return array(
+    'info' => array(
+      'path' => drupal_get_path('module', 'statuses_tags') . '/views',
+    ),
+    'handlers' => array(
+      'statuses_tags_views_handler_argument_has_this_tag' => array(
+        'parent' => 'views_handler_argument_string',
+      ),
+      'statuses_tags_views_handler_argument_has_this_tag_id' => array(
+        'parent' => 'views_handler_argument_numeric',
+      ),
+      'statuses_tags_views_handler_field_all_terms' => array(
+        'parent' => 'views_handler_field',
+      ),
+      'statuses_tags_views_handler_field_message' => array(
+        'parent' => 'views_handler_field',
+      ),
+      'statuses_tags_views_handler_field_name' => array(
+        'parent' => 'views_handler_field',
+      ),
+      'statuses_tags_views_handler_filter_has_tag' => array(
+        'parent' => 'views_handler_filter',
+      ),
+      'statuses_tags_views_handler_filter_has_this_tag' => array(
+        'parent' => 'views_handler_filter_string',
+      ),
+      'statuses_tags_views_handler_filter_string_type' => array(
+        'parent' => 'views_handler_filter_in_operator',
+      ),
+    ),
+  );
 }

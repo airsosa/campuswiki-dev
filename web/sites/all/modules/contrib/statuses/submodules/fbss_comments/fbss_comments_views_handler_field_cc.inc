@@ -11,11 +11,7 @@
 class fbss_comments_views_handler_field_cc extends views_handler_field {
   function render($values) {
     $sid = $values->{$this->field_alias};
-    $count_query = db_select('fbss_comments')
-      ->condition('sid', $sid);
-    $count_query->addExpression('COUNT(cid)');
-    $count = $count_query->execute()
-      ->fetchField();
+    $count = db_query("SELECT COUNT(cid) FROM {fbss_comments} WHERE sid = :sid", array(':sid' => $sid))->fetchField();
     return $count;
   }
 }

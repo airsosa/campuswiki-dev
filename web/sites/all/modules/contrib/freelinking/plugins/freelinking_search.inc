@@ -42,11 +42,10 @@ function freelinking_search_callback($target, $plugin) {
       return array('failover' => $failover, 'target' => $target);
     }
   }
-
-  $link[0] = $target['text'] ? $target['text'] : $target['dest'];
+  $link[0] = $target['text'] ? $target['text'] : $target['target'];
   $link[1] = 'search/node/' . $target['dest'];
   $link[2]['attributes']['title'] =
-    t('Search this site for content like "%dest"', array('%dest' => $target['dest']));
+    t('Search this site for content like "%dest"', array('%dest' => $target['target']));
   return $link;
 }
 

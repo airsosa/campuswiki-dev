@@ -13,16 +13,11 @@ function fbss_privacy_views_query_alter(&$view, &$query) {
   // Alter any view that shows status updates and exclude private statuses (unless we've already set a related filter).
   foreach ($query->table_queue as $table) {
     if ($table['table'] == 'statuses' && !isset($query->where['fbss_privacy']) && !user_access('view all private status messages')) {
-      $table_alias = $table['alias'];
-      $db_or = db_or()
-        ->condition("$table_alias.sender", $user->uid)
-        ->condition("$table_alias.private", 0);
-      $db_and = db_and()
-        ->condition("$table_alias.recipient", $user->uid)
-        ->condition("$table_alias.type", 'user');
-      $query->add_where('fbss_privacy', db_or()
-        ->condition($db_or)
-        ->condition($db_and));
+      $query->add_where('fbss_privacy',
+        $table['alias'] . '.private = 0 OR ' .
+        $table['alias'] . '.sender = %d OR (' .
+          $table['alias'] . ".type = 'user' AND " . $table['alias'] . ".recipient = %d)",
+        $user->uid, $user->uid);
       break;
     }
   }
@@ -56,4 +51,26 @@ function fbss_privacy_views_data() {
     ),
   );
   return $data;
+}
+
+/**
+ * Implements hook_views_handlers().
+ */
+function fbss_privacy_views_handlers() {
+  return array(
+    'info' => array(
+      'path' => drupal_get_path('module', 'fbss_privacy'),
+    ),
+    'handlers' => array(
+      'fbss_privacy_views_handler_argument' => array(
+        'parent' => 'views_handler_argument',
+      ),
+      'fbss_privacy_views_handler_field' => array(
+        'parent' => 'views_handler_field',
+      ),
+      'fbss_privacy_views_handler_filter' => array(
+        'parent' => 'views_handler_filter',
+      ),
+    ),
+  );
 }

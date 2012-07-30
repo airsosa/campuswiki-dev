@@ -15,7 +15,7 @@ attach: function (context) {
   var $statuses_field = ctxt.find('.statuses-text:first');
   var statuses_original_value = $statuses_field.val();
   var fbss_maxlen = Drupal.settings.statuses.maxlength;
-  var fbss_hidelen = parseInt(Drupal.settings.statuses.hideLength, 10);
+  var fbss_hidelen = parseInt(Drupal.settings.statuses.hideLength);
   if (fbss_refreshIDs == undefined) {
     fbss_refreshIDs = Drupal.settings.statuses.refreshIDs;
   }
@@ -72,6 +72,13 @@ attach: function (context) {
   if (fbss_hidelen > 0) {
     ctxt.find('.statuses-content').each(fbss_truncate);
   }
+  // Modal Frame integration.
+  if (Drupal.modalFrame) {
+    ctxt.find('.statuses-edit a, .statuses-delete a').click(function(event) {
+      event.preventDefault();
+      Drupal.modalFrame.open({url: $(this).attr('href'), onSubmit: fbss_refresh});
+    });
+  }
   // React when a status is submitted.
   ctxt.find('#statuses-box').bind('ajax_complete', function(context) {
     if ($(context.target).html() != $(this).html()) {
@@ -125,6 +132,23 @@ attach: function (context) {
     });
   }
 }
+}
+// Change remaining character count.
+function fbss_print_remaining(fbss_remaining, where) {
+  if (fbss_remaining >= 0) {
+    where.html(Drupal.formatPlural(fbss_remaining, '1 character left', '@count characters left', {}));
+    if (statuses_submit_disabled) {
+      $('.statuses-submit').attr('disabled', false);
+      statuses_submit_disabled = false;
+    }
+  }
+  else if (Drupal.settings.statuses.maxlength != 0) {
+    where.html('<span class="statuses-negative">'+ Drupal.formatPlural(Math.abs(fbss_remaining), '-1 character left', '-@count characters left', {}) +'</span>');
+    if (!statuses_submit_disabled) {
+      $('.statuses-submit').attr('disabled', true);
+      statuses_submit_disabled = true;
+    }
+  }
 }
 // Disallow refreshing too often or double-clicking the Refresh link.
 function fbss_allowRefresh() {
@@ -193,21 +217,3 @@ function fbss_refresh() {
   }
 }
 })(jQuery);
-
-// Change remaining character count.
-function fbss_print_remaining(fbss_remaining, where) {
-  if (fbss_remaining >= 0) {
-    where.html(Drupal.formatPlural(fbss_remaining, '1 character left', '@count characters left', {}));
-    if (statuses_submit_disabled) {
-      jQuery('.statuses-submit').attr('disabled', false);
-      statuses_submit_disabled = false;
-    }
-  }
-  else if (Drupal.settings.statuses.maxlength != 0) {
-    where.html('<span class="statuses-negative">'+ Drupal.formatPlural(Math.abs(fbss_remaining), '-1 character left', '-@count characters left', {}) +'</span>');
-    if (!statuses_submit_disabled) {
-      jQuery('.statuses-submit').attr('disabled', true);
-      statuses_submit_disabled = true;
-    }
-  }
-}

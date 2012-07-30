@@ -102,23 +102,18 @@ function fbss_userpoints_statuses_save($status, $context, $edit, $options) {
   if ($edit) {
     return;
   }
-  $sender = user_load($status->sender);
+  $sender = _statuses_user_load($status->sender);
   $recipient = $context['handler']->load_recipient($status->recipient);
-  $points_query = db_select('userpoints_txn')
-    ->condition('uid',  $sender->uid)
-    ->condition('time_stamp',  (REQUEST_TIME - 86400),  '>')
-    ->condition(db_or()->condition('operation',  'statuses add own')->condition('operation',  'statuses add other'))
-    ->condition('expired',  0)
-    ->condition('status',  0);
-  $points_query->addExpression('SUM(points)',  'points');
-  $points_today = $points_query->execute()
-    ->fetchField();
+  $points_today = db_query("SELECT SUM(points) FROM {userpoints_txn}
+    WHERE uid = :uid AND time_stamp > :time_stamp
+      AND (operation = :(operation OR operation = :operation)
+      AND expired = :expired AND status = :status", array(':uid' => $sender->uid, ':time_stamp' => REQUEST_TIME - 86400, ':(operation' => 'statuses add own', ':operation' => 'statuses add other', ':expired' => 0, ':status' => 0))->fetchField();
   if (variable_get('statuses_userpoints_max', 0) && $points_today >= variable_get('statuses_userpoints_max', 0)) {
     return;
   }
   $params = array(
     'uid' => $sender->uid,
-    'reference' => $status->sid,
+    'reference' => $sid,
     // Unknown purpose.
     //'entity_id' => $sid,
     //'entity_type' => 'statuses',
@@ -152,18 +147,12 @@ function fbss_userpoints_statuses_delete($status, $meta = array()) {
   if (!empty($options['has attachment'])) {
     return;
   }
-  $sender = user_load($status->sender);
+  $sender = _statuses_user_load($status->sender);
   global $user;
-  $result = db_select('userpoints_txn')
-    ->fields('userpoints_txn',  array('points'))
-    ->condition('operation',  'statuses add%%',  'LIKE')
-    ->condition('reference',  $status->sid)
-    ->condition('uid',  $sender->uid)
-    ->execute()
-    ->fetchField();
+  $result = db_fetch_object(db_query("SELECT points FROM {userpoints_txn} WHERE operation LIKE 'statuses add%%' AND reference = :reference AND uid = :uid", array(':reference' => $status->sid, ':uid' => $sender->uid)));
   $params = array(
     'uid' => $sender->uid,
-    'points' => 0 - $result,
+    'points' => 0 - $result->points,
     'operation' => 'statuses delete',
   );
   if ($user->uid == $sender->uid) {
@@ -184,16 +173,11 @@ function fbss_userpoints_fbss_comments_after_save($comment, $edit) {
   if ($edit) {
     return;
   }
-  $account = user_load($comment->uid);
-  $points_query = db_select('userpoints_txn')
-    ->condition('uid',  $comment->uid)
-    ->condition('time_stamp',  (REQUEST_TIME - 86400),  '>')
-    ->condition('operation',  'fbss_comments add')
-    ->condition('expired',  0)
-    ->condition('status',  0);
-  $points_query->addExpression('SUM(points)',  'points');
-  $points_today = $points_query->execute()
-    ->fetchField();
+  $account = _statuses_user_load($comment->uid);
+  $points_today = db_query("SELECT SUM(points) FROM {userpoints_txn}
+    WHERE uid = :uid AND time_stamp > :time_stamp
+      AND operation = :operation
+      AND expired = :expired AND status = :status", array(':uid' => $comment->uid, ':time_stamp' => REQUEST_TIME - 86400, ':operation' => 'fbss_comments add', ':expired' => 0, ':status' => 0))->fetchField();
   if (variable_get('fbss_comments_userpoints_max', 0) && $points_today >= variable_get('fbss_comments_userpoints_max', 0)) {
     return;
   }
@@ -215,17 +199,11 @@ function fbss_userpoints_fbss_comments_after_save($comment, $edit) {
  */
 function fbss_userpoints_fbss_comments_delete($cid) {
   $comment = fbss_comments_load($cid);
-  $account = user_load($comment->uid);
-  $result = db_select('userpoints_txn')
-    ->fields('userpoints_txn',  array('points'))
-    ->condition('operation',  'fbss_comments add')
-    ->condition('reference',  $cid)
-    ->condition('uid',  $comment->uid)
-    ->execute()
-    ->fetchField();
+  $account = _statuses_user_load($comment->uid);
+  $result = db_fetch_object(db_query("SELECT points FROM {userpoints_txn} WHERE operation = :operation AND reference = :reference AND uid = :uid", array(':operation' => 'fbss_comments add', ':reference' => $cid, ':uid' => $comment->uid)));
   $params = array(
     'uid' => $comment->uid,
-    'points' => 0 - $result,
+    'points' => 0 - $result->points,
     'operation' => 'fbss_comments delete',
     'description' => t('!user deleted a status comment.', array('!user' => theme('username', array('account' => $account)))),
   );
