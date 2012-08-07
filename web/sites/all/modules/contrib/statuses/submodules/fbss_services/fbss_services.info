@@ -10,9 +10,9 @@ files[] = fbss_services.inc
 files[] = fbss_services.module
 files[] = fbss_services.resources.inc
 
-; Information added by drupal.org packaging script on 2012-03-15
-version = "7.x-1.0-unstable4"
+; Information added by drupal.org packaging script on 2012-08-02
+version = "7.x-1.0-beta1"
 core = "7.x"
 project = "statuses"
-datestamp = "1331785844"
+datestamp = "1343889744"
 
