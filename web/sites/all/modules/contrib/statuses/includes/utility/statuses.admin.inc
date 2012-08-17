@@ -237,19 +237,27 @@ function statuses_admin_contexts($form, &$form_state) {
       '#type' => 'hidden',
       '#value' => $type,
     );
+    $form['components'][$type]['selectors'] = array(
+      '#type' => 'value',
+      '#value' => isset($values['selectors']) ? $values['selectors'] : '',
+    );
+    $form['components'][$type]['pages'] = array(
+      '#type' => 'value',
+      '#value' => isset($values['pages']) ? $values['pages'] : '',
+    );
     $form['components'][$type]['already_saved'] = array(
       '#type' => 'hidden',
       '#value' => isset($values['in_db']) ? $values['in_db'] : FALSE,
     );
   }
   // The user context has 2 views.
-  $self = $options[isset($data['user']['view']) ? $data['user']['view'] : ''];
+  $self = isset($data['user']['view']) ? $data['user']['view'] : '';
   $other = variable_get('statuses_user_other_view', 'statuses_stream');
   if ($self != $other) {
     $form['components']['user']['view'] = array(
       '#markup' => t('%self and %other - view configuration to change', array(
-        '%self' => $self,
-        '%other' => $other,
+        '%self' => $options[$self],
+        '%other' => $options[$other],
       )),
     );
   }
@@ -284,6 +292,8 @@ function statuses_admin_contexts_submit($form, &$form_state) {
       'type' => $item['type'],
       'weight' => intval($item['weight']),
       'view' => $item['view'],
+      'selectors' => $item['selectors'],
+      'pages' => $item['pages']
     );
     if ($item['already_saved']) {
       drupal_write_record('statuses_contexts', $record, 'type');
@@ -417,36 +427,16 @@ function statuses_admin_context_settings($form, $form_state, $context) {
       $options[BLOCK_VISIBILITY_PHP] = t('Show if the following PHP code returns <code>TRUE</code> (PHP-mode, experts only).');
       $description .= ' ' . t('If the PHP-mode is chosen, enter PHP code between %php. Note that executing incorrect PHP-code can break your Drupal site.', array('%php' => '<?php ?>'));
     }
-    if (module_exists('context')) {
-      $options[3] = t('Use the conditions from a Context from the Context module');
-      drupal_add_js(drupal_get_path('module', 'statuses') . '/resources/statuses_admin.js');
-    }
     $form['page_vis_settings']['visibility'] = array(
       '#type' => 'radios',
       '#title' => t('Apply context on specific pages'),
       '#options' => $options,
       '#default_value' => isset($context['visibility']) ? ($context['visibility'] == 3 && !module_exists('context') ? -1 : $context['visibility']) : -1,
     );
-    if (module_exists('context')) {
-      $form['page_vis_settings']['context'] = array(
-        '#type' => 'select',
-        '#title' => t('Context'),
-        '#description' => t('Choose a context provided by the Context module whose conditions should be evaluated to determine whether the stream context applies.'),
-        '#default_value' => isset($context['context']) ? $context['context'] : '',
-        '#options' => drupal_map_assoc(array_keys(context_enabled_contexts())),
-        '#states' => array(
-          'visible' => array(
-            'input:radio[name="visibility"]' => array('value' => 3),
-          ),
-        ),
-      );
-    }
-    else {
-      $form['page_vis_settings']['context'] = array(
-        '#type' => 'value',
-        '#value' => isset($context['context']) ? $context['context'] : '',
-      );
-    }
+    $form['page_vis_settings']['context'] = array(
+      '#type' => 'value',
+      '#value' => isset($context['context']) ? $context['context'] : '',
+    );
     $form['page_vis_settings']['pages'] = array(
       '#type' => 'textarea',
       '#title' => t('Pages'),
