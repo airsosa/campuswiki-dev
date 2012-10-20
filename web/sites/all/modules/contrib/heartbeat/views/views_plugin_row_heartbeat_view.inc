@@ -10,14 +10,17 @@
  * Most of the code on this object is in the theme function.
  */
 class views_plugin_row_heartbeat_view extends views_plugin_row {
+
   // Basic properties that let the row style follow relationships.
   public $base_table = 'heartbeat_activity';
   public $base_field = 'uaid';
-
-  // Stores the $activities loaded with pre_render.
+  // Properties for internal storage.
   public $activities = array();
   public $stream = NULL;
 
+  /**
+   * Implements init(&$view, &$display, $options).
+   */
   function init(&$view, &$display, $options = NULL) {
     parent::init($view, $display, $options);
     // Handle existing views which has used build_mode instead of view_mode.
@@ -26,6 +29,9 @@ class views_plugin_row_heartbeat_view extends views_plugin_row {
     }
   }
 
+  /**
+   * Implements option_definition().
+   */
   function option_definition() {
     $options = parent::option_definition();
 
@@ -36,6 +42,10 @@ class views_plugin_row_heartbeat_view extends views_plugin_row {
     return $options;
   }
 
+  /**
+   * Implements options_form(&$form, &$form_state).
+   *
+   */
   function options_form(&$form, &$form_state) {
     parent::options_form($form, $form_state);
 
@@ -59,6 +69,8 @@ class views_plugin_row_heartbeat_view extends views_plugin_row {
   }
 
   /**
+   * Implements options_form_summary_options().
+   *
    * Return the main options, which are shown in the summary title.
    */
   function options_form_summary_options() {
@@ -83,8 +95,16 @@ class views_plugin_row_heartbeat_view extends views_plugin_row {
     return check_plain($options[$this->options['view_mode']]);
   }
 
+  /**
+   * Implements pre_render($values).
+   *
+   * Here the stream is build, but letting users create the stream custom.
+   * If they do so, the default access checks which heartbeat normally does
+   * in the query will not be executed.
+   * If they configured the stream to behave like a heartbeat stream, then
+   * Heartbeat will take over the base query.
+   */
   function pre_render($values) {
-
     $uaids = array();
     foreach ($values as $row) {
       $uaids[] = $row->{$this->field_alias};
@@ -95,9 +115,17 @@ class views_plugin_row_heartbeat_view extends views_plugin_row {
     // the general flow to display everything.
     if ($heartbeatStream = heartbeat_stream('viewsactivity', $this->display->display_plugin == 'page', $GLOBALS['user'])) {
 
-      $heartbeatStream->config->num_load_max = $this->view->query->limit;
+    	$heartbeatStream->rowPlugin = TRUE;
 
+      // Use the views limit instead of heartbeats stream setting.
+      if (isset($this->view->query->limit)) {
+        $heartbeatStream->config->num_load_max = $this->view->query->limit;
+      }
+
+      // Load activities by using the heartbeat loader.
       $this->activities = heartbeat_stream_views_build($heartbeatStream, $uaids);
+
+      // Store the stream for later usage.
       $this->stream = $heartbeatStream;
 
       if ($heartbeatStream->hasErrors()) {
@@ -106,6 +134,20 @@ class views_plugin_row_heartbeat_view extends views_plugin_row {
 
     }
 
+  }
+
+  /**
+   * Implements render($row).
+   *
+   */
+  function render($row) {
+  	$uaid = isset($row->uaid) ? $row->uaid : (isset($row->heartbeat_activity_uaid) ? $row->heartbeat_activity_uaid : 0);
+    if ($uaid) {
+      $activity = heartbeat_activity_load($uaid);
+      $build = heartbeat_activity_view($activity);
+      return render($build);
+    }
+    return '';
   }
 
 }

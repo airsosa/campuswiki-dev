@@ -8,8 +8,8 @@
  * dynamic hooks (hooks with pattern-derived string names).
  *
  * Note that the export hooks like
- *   ° hook_defaults_heartbeat_template_info,
- *   ° hook_defaults_heartbeat_stream_info
+ *   ° hook_heartbeat_template_info,
+ *   ° hook_heartbeat_stream_info
  *   ° hook_heartbeat_plugin_info
  * are dependant on CTools. This requires you to include the
  * hook_ctools_plugin_api() as well.
@@ -34,7 +34,7 @@
  *     Node id for content that is related to other content
  *   @param array $variables [optional]
  *     Variables can be used if you used them in the used message. Take care to use
- *     the @-sign for words that are prefix with the question mark sign in the messages
+ *     the !-sign for words that are prefix with the question mark sign in the messages
  *   @param integer $access
  *     The access to restrict the message
  *
@@ -65,7 +65,7 @@ function hook_ctools_plugin_api($module, $api) {
  *
  * @see hook_ctools_plugin_api.
  */
-function hook_defaults_heartbeat_stream_info() {
+function hook_heartbeat_stream_info() {
 
   $heartbeatstreams = array();
 
@@ -90,7 +90,7 @@ function hook_defaults_heartbeat_stream_info() {
  *
  * @see hook_ctools_plugin_api.
  */
-function hook_defaults_heartbeat_template_info() {
+function hook_heartbeat_template_info() {
 
   $heartbeatmessagetemplates = array();
 
@@ -271,13 +271,13 @@ function hook_heartbeat_activity_view(HeartbeatActivity $heartbeatActivity, $vie
   );
   $heartbeatActivity->content['time'] = array(
     '#title' => t('Activity on'),
-    '#markup' => theme('heartbeat_time_ago', array('message' => $heartbeatActivity)),
+    '#markup' => theme('heartbeat_time_ago', array('heartbeat_activity' => $heartbeatActivity)),
   );
   $heartbeatActivity->content['buttons'] = array(
-    '#markup' => theme('heartbeat_buttons', array('message' => $heartbeatActivity)),
+    '#markup' => theme('heartbeat_buttons', array('heartbeat_activity' => $heartbeatActivity)),
   );
   $heartbeatActivity->content['attachments'] = array(
-    '#markup' => theme('heartbeat_attachments', array('message' => $heartbeatActivity)),
+    '#markup' => theme('heartbeat_attachments', array('heartbeat_activity' => $heartbeatActivity)),
   );
 
 }

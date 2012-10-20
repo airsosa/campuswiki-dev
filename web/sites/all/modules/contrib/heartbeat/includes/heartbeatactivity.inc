@@ -9,7 +9,7 @@
 /**
  * Class defines an activity message object
  */
-class HeartbeatActivity {
+class HeartbeatActivity extends stdClass {
 
   // DB fields
   public $uaid = 0;
@@ -22,15 +22,16 @@ class HeartbeatActivity {
   public $nid_access = TRUE;
   public $nid_target = 0;
   public $nid_target_access = TRUE;
+  public $in_group = 0;
   public $timestamp = 0;
   public $language = 'en';
   public $message = '';
   public $message_concat = '';
   public $access = HEARTBEAT_PUBLIC_TO_ALL;
-  public $private = FALSE;
   public $variables = array();
   public $attachments = array();
   public $additions = NULL;
+  public $index = NULL;
   public $buttons = array();
   public $classes = '';
   // User object of the uid, being the actor of activity
@@ -54,6 +55,7 @@ class HeartbeatActivity {
   public $streamname = '';
   public $view_mode = 'full';
   public $content = array();
+  //public $_vars = NULL;
 
   /**
    * constructor
@@ -65,6 +67,8 @@ class HeartbeatActivity {
    *   holds the template data.
    */
   function __construct($data, HeartbeatMessageTemplate $template) {
+
+    //$this->_vars = new stdClass();
 
     $this->template = $template;
 
@@ -81,16 +85,33 @@ class HeartbeatActivity {
     if (isset($data['count'])) {
       $this->count = $data['count'];
     }
-    $this->set_actor($data);
-
-    $this->uid_target = $data['uid_target'];
-    $this->nid = $data['nid'];
-    $this->nid_target = isset($data['nid_target']) ? (int)$data['nid_target'] : 0;
     $this->timestamp = isset($data['timestamp']) ? $data['timestamp'] : $_SERVER['REQUEST_TIME'];
 
-    $this->access = isset($data['access']) ? (int)$data['access'] : HEARTBEAT_PUBLIC_TO_ALL;
+    $this->set_actor($data);
 
-    $this->set_variables($data['variables']);
+    if (isset($data['uid_target'])) {
+      $this->uid_target = $data['uid_target'];
+    }
+
+    if (isset($data['nid'])) {
+      $this->nid = $data['nid'];
+    }
+
+    if (isset($data['nid_target'])) {
+      $this->nid_target = $data['nid_target'];
+    }
+
+    if (isset($data['cid'])) {
+      $this->cid = $data['cid'];
+    }
+
+    if (isset($data['in_group'])) {
+      $this->in_group = $data['in_group'];
+    }
+
+    if (isset($data['variables'])) {
+      $this->set_variables($data['variables']);
+    }
 
     if (isset($data['extra']['duplicate'])) {
       $this->variables['duplicate'] = $data['extra']['duplicate'];
@@ -104,38 +125,17 @@ class HeartbeatActivity {
     $this->add_buttons();
 
     // Set the access for this message.
-    $this->setAccess();
+    $this->setAccess($data);
 
     // Build the runtime activity message.
     $this->rebuild_message();
 
-  }
-
-  /**
-   * Method gets a heartbeat_activity variable
-   *
-   * @desc The magic getter method fetches a variable
-   *       in members. If not found there, it will always
-   *       check the content holder as well
-   */
-  public function __get($variable) {
-    if (isset($this->variables[$variable])) {
-      return $this->variables[$variable];
+    foreach ($data as $key => $value) {
+      if (strpos($key, 'field_') === 0) {
+        $this->$key = $value;
+      }
     }
-    elseif (isset($this->content[$variable])) {
-      return $this->content[$variable];
-    }
-    return FALSE;
-  }
 
-  /**
-   * Method sets a heartbeat_activity property
-   *
-   * @desc The magic setter method sets a variable to member
-   *  If not found, just stash in the content array
-   */
-  public function __set($variable, $value) {
-    $this->variables[$variable] = $value;
   }
 
   /**
@@ -143,8 +143,13 @@ class HeartbeatActivity {
    */
   public function set_actor($data) {
 
-    $this->uid = $data['uid'];
-    if ($data['uid'] && !empty($data['name'])) {
+    if (isset($data['actor'])) {
+
+      $this->actor = $data['actor'];
+
+    }
+    elseif (!empty($data['name']) && !empty($data['created'])) {
+
       $this->actor = new stdClass();
       $this->actor->uid = $data['uid'];
       $this->actor->name = $data['name'];
@@ -161,25 +166,51 @@ class HeartbeatActivity {
       $this->actor->picture = $data['picture'];
       $this->actor->init = $data['init'];
       $this->actor->data = unserialize($data['data']);
+
     }
     else {
-      $this->actor = user_load($data['uid']);
+
+      $this->actor = user_load(isset($data['uid']) ? $data['uid'] : $GLOBALS['user']->uid);
+
     }
+
+    $this->uid = $this->actor->uid;
+
   }
 
   /**
    * setAccess().
    */
-  public function setAccess() {
-    // Rewrite message access if the access was not changed at log-time
-    // and if the user has configured the access state of this message type.
-    $this->access = $this->template->perms;
-    if (isset($this->actor->heartbeat_activity_settings[$this->message_id]['access'])) {
-      $this->access = $this->actor->heartbeat_activity_settings[$this->message_id]['access'];
+  public function setAccess($raw_data) {
+
+    // By default, we always use the logged "access".
+    $this->access = HEARTBEAT_PUBLIC_TO_ALL;
+
+    // In most cases (hopefully), the property at the  time the activity
+    // occurred will be set and gets priority. This value is calculated
+    // from template access, user profile privacy or custom access.
+    if (isset($raw_data['access'])) {
+      $this->access = (int) $raw_data['access'];
     }
 
-    $this->private = $this->template->perms === HEARTBEAT_PRIVATE || $this->access === HEARTBEAT_PRIVATE;
+    // If the actor of the message has set this type of message, inherit.
+    if (isset($raw_data['access_status']) && $raw_data['access_status'] <= $this->access) {
+      $this->access = (int) $raw_data['access_status'];
+    }
 
+    // If for some reason what so ever, the template restriction had been changed
+    // into some lower permission than calculated, lower down the access.
+    if ((int) $this->template->perms < $this->access) {
+      $this->access = (int) $this->template->perms;
+    }
+
+  }
+
+  /**
+   * isPrivate().
+   */
+  public function isPrivate() {
+    return $this->access === HEARTBEAT_PRIVATE;
   }
 
   /**
@@ -190,15 +221,16 @@ class HeartbeatActivity {
    * @param HeartbeatStream $heartbeatStream
    *   Optional heartbeat stream object where the account object is the viewer.
    *
-   * @throws HeartbeatInvalidStreamException
-   *   This will result in passing the error to the stream it's in.
    */
   public function hasAccess($account, $heartbeatStream = NULL) {
 
     // Case user1 is not related to userA and userB. UserA and UserB are related.
-    // user1 views site activity
+    // user1 views site activity.
     if (isset($heartbeatStream)) {
       $account = $heartbeatStream->getViewer();
+    }
+    else {
+      $heartbeatStream = heartbeat_stream('singleactivity');
     }
 
     $access_activity_profiles = user_access('access heartbeat activity profiles', $account);
@@ -206,8 +238,9 @@ class HeartbeatActivity {
 
     // Remove messages set private by site administrator
     // and remove messages set private by user profile setting.
-    if ($this->private && $account->uid != $this->actor->uid) {
-      throw new HeartbeatInvalidStreamException('Activity message #'. $this->uaid . ' is filtered from display, because it was blocked by administrator or the owner of the message.');
+    if ($this->isPrivate() && $account->uid != $this->actor->uid) {
+      $heartbeatStream->addError('Activity message #'. $this->uaid . ' is filtered from display because it is a private message.');
+      return FALSE;
     }
 
     // Replace user links with their name if no access.
@@ -243,7 +276,9 @@ class HeartbeatActivity {
   public function rebuild_message($concat = FALSE) {
 
     $template_message = ($concat ? $this->template->message_concat : $this->template->message);
-    $this->message = strtr($template_message, $this->variables);
+
+    //$this->message = strtr($template_message, $this->variables);
+    $this->message = t($template_message, $this->variables);
 
     return $this->message;
 
@@ -307,11 +342,11 @@ class HeartbeatActivity {
         // limit them to the value given by the group variable setting
         if (isset($stored_variables["!". $target])) {
           if ($i == 1) {
-            $merged_string .= ' ' . $stored_variables["!". $target];
+            $merged_string .= $stored_variables["!". $target];
           }
           elseif ($i < $count && $count > 2) {
-            $merged_string .= ' ' . $this->template->concat_args['merge_separator'];
-            $merged_string .= ' ' . $stored_variables["!". $target];
+            $merged_string .= $this->template->concat_args['merge_separator'];
+            $merged_string .= $stored_variables["!". $target];
           }
           elseif ($i == $count || $count == 2) {
             $merged_string .= ' ' . $this->template->concat_args['merge_end_separator'];
@@ -320,15 +355,15 @@ class HeartbeatActivity {
                 'attributes' => array(
                   'id' => $beat . '_remaining',
                   'class' => array('beat-remaining'),
-                  'absolute' => TRUE,
                 ),
+                'absolute' => TRUE,
                 'fragment' => $beat
                 );
-              $merged_string .= ' ' . l(t('@num more', array('@num' => count($remains))), $base_url . request_uri(), $attributes);
+              $merged_string .= l(t('@num more', array('@num' => count($remains))), $base_url . request_uri(), $attributes);
               $message_extension .= $hidden_remains;
             }
             else {
-              $merged_string .= ' ' . $stored_variables["!". $target];
+              $merged_string .= $stored_variables["!". $target];
             }
           }
         }
@@ -349,8 +384,6 @@ class HeartbeatActivity {
    */
   public function save($raw_args = array()) {
 
-    $locale = module_exists('locale');
-
     if (!empty($this->nid)) {
       // if a user selected a language, then we follow i19n
       $node = node_load($this->nid);
@@ -359,12 +392,8 @@ class HeartbeatActivity {
       }
     }
 
-    if ($locale) {
-      return $this->save_locale($raw_args);
-    }
-    else {
-      return $this->_save($raw_args);
-    }
+    return $this->_save($raw_args);
+
   }
 
   /**
@@ -373,7 +402,7 @@ class HeartbeatActivity {
    * this means that when activity message objects get merged, the variables
    * will be filled with variables components from all instances.
    */
-  private function set_variables($variables = NULL) {
+  public function set_variables($variables = NULL) {
 
     if (!empty($variables)) {
 
@@ -394,7 +423,11 @@ class HeartbeatActivity {
     // Internal button.
     if ($this->delete_access || $this->actor_access) {
       heartbeat_ctools_modal_prepare();
-      $button = '<span class="hover-delete">' . ctools_modal_text_button(t('Delete'), 'heartbeat/nojs/activity/delete/' . $this->uaid, t('Delete'),  'ctools-modal-ctools-heartbeat-style') . '</span>';
+
+      drupal_add_library('system', 'drupal.ajax');
+      $link = l(t('Delete'), 'heartbeat/nojs/activity/delete/' . $this->uaid, array('query' => array('destination' => $_GET['q']), 'html' => TRUE, 'attributes' => array('class' => array('use-ajax', 'ctools-modal-ctools-heartbeat-style'), 'title' => t('Delete'))));
+      $button = '<span class="hover-delete">' . $link . '</span>';
+      //$button = '<span class="hover-delete">' . ctools_modal_text_button(t('Delete'), 'heartbeat/nojs/activity/delete/' . $this->uaid, t('Delete'),  'ctools-modal-ctools-heartbeat-style') . '</span>';
       $this->add_button($button);
     }
 
@@ -415,58 +448,29 @@ class HeartbeatActivity {
   }
 
   /**
-   * Save activity log with multilingual content
-   * and multilingual parts to pre-translate
-   *
-   * @param array $raw_args
+   * add_plugin().
    */
-  private function save_locale($raw_args = array()) {
-
-    $logged = FALSE;
-    $args = $this->rebuild_arguments($raw_args, TRUE);
-    $locale = $args['locale'];
-    unset($args['locale']);
-
-    // Save activity by logging a row for each active language
-    // Translations only when locale exists
-    $languages = locale_language_list();
-
-    $tuaid = NULL;
-    foreach ($languages as $language => $human_language) {
-
-      // preprocess multilingual message "parts"
-      // for all flagged token replacements
-      foreach ($this->variables as $key => $value) {
-        if (isset($locale[$key])) {
-          $amp_token = str_replace("#", "!", $key);
-          $args[$amp_token] = locale($locale[$key], $language);
-        }
-      }
-
-      $uaid = $this->log_message($args, $language);
-
-      // Each language has the first uaid (user activity id) as
-      // tuaid (translated user activity id)
-      if ($uaid && !isset($tuaid)) {
-        $tuaid = $uaid;
-      }
-
-      $last_id = db_insert('heartbeat_translations')
-      ->fields(array('tuaid', 'uaid'))
-      ->values(array(
-        'tuaid' => $tuaid,
-        'uaid' => $uaid))
-      ->execute();
-
+  public function add_plugin($pluginId, iHeartbeatPlugin $plugin) {
+    if (!isset($this->additions->plugins)) {
+      $this->additions->plugins = array();
     }
+    $this->additions->plugins[$pluginId] = $plugin;
+  }
 
-    return $uaid;
+  /**
+   * remove_plugin().
+   */
+  public function remove_plugin($pluginId) {
+    unset($this->additions->plugins[$pluginId]);
   }
 
   /**
    * Save activity log
    *
    * @param array $raw_args
+   *   All variables as key => value.
+   * @param Object $lang
+   *   Optional lang_code.
    */
   private function _save($raw_args = array(), $lang = '') {
     // Rebuild arguments with tokens
@@ -485,22 +489,26 @@ class HeartbeatActivity {
       $lang = $GLOBALS['language']->language;
     }
 
-    // Checks if there should be logging what so ever
+    // Checks if there should be logging what so ever.
     if (empty($this->message)) {
       watchdog('heartbeat', 'Error in logging user activity: it is not possible to log empty message', array(), WATCHDOG_ERROR);
       return FALSE;
     }
 
+    // Rewrite access if the user has configured the access state of this message type.
+    $heartbeat_user_templates = heartbeat_user_templates_load($this->uid);
+    if (!empty($heartbeat_user_templates) && isset($heartbeat_user_templates[$this->message_id])) {
+      $this->access = $heartbeat_user_templates[$this->message_id]->status;
+    }
+
     // Prepare extra variables (hardcoded for node for now)
     // TODO think of a cleaner sollution.
-    if ($this->nid > 0) {
-      $node = node_load($this->nid);
+    if ($this->nid > 0 && $node = node_load($this->nid)) {
       $this->variables['node_type'] = $node->type;
       $this->variables['node_status'] = $node->status;
       $this->variables['node_uid'] = $node->uid;
     }
-    if ($this->nid_target > 0) {
-      $node = node_load($this->nid_target);
+    if ($this->nid_target > 0 && $node = node_load($this->nid_target)) {
       $this->variables['node_target_type'] = $node->type;
       $this->variables['node_target_status'] = $node->status;
       $this->variables['node_target_uid'] = $node->uid;
@@ -508,7 +516,7 @@ class HeartbeatActivity {
 
     // Log relational message to user activity
     $last_id = db_insert('heartbeat_activity')
-      ->fields(array('message_id', 'nid', 'uid', 'nid_target', 'uid_target', 'cid', 'access', 'timestamp', 'language', 'variables'))
+      ->fields(array('message_id', 'nid', 'uid', 'nid_target', 'uid_target', 'cid', 'access', 'timestamp', 'language', 'variables', 'in_group'))
       ->values(array(
         'message_id' => $this->message_id,
         'nid' => $this->nid,
@@ -519,6 +527,7 @@ class HeartbeatActivity {
         'access' => $this->access,
         'timestamp' => $this->timestamp,
         'language' => $lang,
+        'in_group' => $this->in_group,
         'variables' => heartbeat_encode_message_variables($this->variables)))
       ->execute();
 
@@ -546,12 +555,8 @@ class HeartbeatActivity {
    *
    * @param array $raw_input of arguments
    */
-  private function rebuild_arguments($raw_input, $locale = FALSE) {
+  private function rebuild_arguments($raw_input) {
     $args = array();
-    if ($locale) {
-      // Variables that need to be pre-translated go here
-      $args['locale'] = array();
-    }
 
     // Rebuild arguments with language tokens
     foreach ($this->variables as $key => $value) {
@@ -559,19 +564,11 @@ class HeartbeatActivity {
       $value = filter_xss($value);
 
       // Leave $key[0] == "!"  asis
-      if ($key[0] != "@" || $key[0] != "#" || $key[0] != "!") {
+      if ($key[0] != "@" || $key[0] != "!") {
         continue; // bad argument
       }
       $oldkey = $key;
 
-      // # and @ token replacement prefixes are kept,
-      // but set a flag for it in the raw_arguments
-      if ($key[0] == "#") {
-        // if it has to be translated ...
-        if ($locale) $args['locale'][$key] = $value;
-        // Now reset the key
-        $key[0] = "!";
-      }
       // if argument is prefilled, override
       if (isset($raw_input[$oldkey])) {
         $args[$key] = $raw_input[$oldkey];

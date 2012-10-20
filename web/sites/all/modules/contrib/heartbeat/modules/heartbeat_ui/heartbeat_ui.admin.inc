@@ -168,6 +168,11 @@ function heartbeat_admin_settings() {
     '#options' => $cron_delete_options,
     '#default_value' => variable_get('heartbeat_activity_log_cron_delete', 2678400),
   );
+  $form['hb_logging']['heartbeat_activity_records_per_user'] = array(
+    '#title' => t('Number of messages to keep in database for each user'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('heartbeat_activity_records_per_user', 10),
+  );
 
   // display settings
   $form['hb_fields'] = array(
@@ -177,6 +182,18 @@ function heartbeat_admin_settings() {
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
     '#group' => 'general',
+  );
+  $form['hb_fields']['heartbeat_include_default_style'] = array(
+    '#title' => t('Enable default style'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get('heartbeat_include_default_style', 1),
+    '#description' => t('When disabled, heartbeat.css is not included meaning you don\'t have to override the FB-alike style.'),
+  );
+  $form['hb_fields']['heartbeat_allowed_html_tags'] = array(
+    '#title' => t('Allowed html tags'),
+    '#type' => 'textfield',
+    '#default_value' => heartbeat_allowed_html_tags(),
+    '#description' => t('Type html tags to allow in activity using a space to separate the tags.')
   );
   $form['hb_fields'] ['heartbeat_show_message_times'] = array(
     '#title' => t('Show the time of action in message displays'),

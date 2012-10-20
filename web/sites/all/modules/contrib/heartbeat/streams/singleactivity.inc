@@ -17,7 +17,7 @@ class SingleActivity extends HeartbeatStream {
    * @param $text
    * @return boolean to indicate the access to the stream
    */
-  protected function hasAccess() {
+  public function hasAccess() {
     return TRUE;
   }
 
@@ -29,6 +29,11 @@ class SingleActivity extends HeartbeatStream {
 
     $this->query = db_select('heartbeat_activity', 'ha');
     $this->query->fields('ha');
+
+    // Override the permission based on the user profile status.
+    $this->query->leftJoin('heartbeat_user_templates', 'hut', ' ha.uid = hut.uid AND ha.message_id = hut.message_id ');
+    $this->query->addField('hut', 'status', 'access_status');
+
     $this->query->condition('ha.uaid', $this->latest_activity_id);
     $this->query->where(" ha.language IN (:languages) ", array(':languages' => $this->getCurrentLanguages()));
 

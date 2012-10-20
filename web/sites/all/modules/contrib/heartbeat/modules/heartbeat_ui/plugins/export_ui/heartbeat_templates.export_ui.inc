@@ -2,9 +2,8 @@
 
 /**
  * @file
- * Contains ctools export_ui plugin for heartbeat templates.
+ * Contains ctools export_ui plugin for mail templates.
  */
-
 $plugin = array(
 
   'schema' => 'heartbeat_messages',
@@ -22,17 +21,9 @@ $plugin = array(
   'title plural' => t('Heartbeat templates'),
   'title plural proper' => t('Heartbeat templates'),
 
-  // $form_state['values'] to $form_state['item'].
-  // All callbacks will accept &$form and &$form_state as arguments.
-  'form' => array(
-    'settings' => 'heartbeat_ui_ctools_export_ui_form',
-    'validate' => 'heartbeat_ui_ctools_export_ui_form_validate',
-    'submit' => 'heartbeat_ui_ctools_export_ui_form_submit',
-  ),
-
   'handler' => array(
-     'class' => 'ctools_export_ui_heartbeat_template',
-     'parent' => 'ctools_export_ui',
-   ),
+    'class' => 'ctools_export_ui_heartbeat_template',
+    'parent' => 'ctools_export_ui',
+  ),
 
 );

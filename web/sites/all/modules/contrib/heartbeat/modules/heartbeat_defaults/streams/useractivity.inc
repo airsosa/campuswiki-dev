@@ -27,7 +27,7 @@ class UserActivity extends HeartbeatStream {
    *
    * @param object $view The view handler object by reference to add our part to the query
    */
-  protected function viewsQueryAlter(&$view) {
+  public function viewsQueryAlter(&$view) {
     $views->query->condition(db_or()
       ->condition('ha.uid', $this->viewed->uid)
       ->condition(db_and()->condition('ha.uid_target', $this->viewed->uid)->condition('ha.access', HEARTBEAT_PRIVATE, '>')));

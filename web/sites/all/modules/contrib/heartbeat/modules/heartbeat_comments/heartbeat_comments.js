@@ -51,7 +51,7 @@
    * Ajax method to load comments for an activity message (and its node).
    */
   Drupal.heartbeat.comments.load = function (uaid, node_comment, nid) {
-    var url = Drupal.settings.basePath + 'heartbeat/comments/load/js';
+    var url = Drupal.settings.heartbeat_comment_load_url;
     $.post(url, 
       {uaid: uaid, node_comment: node_comment, nid: nid}, 
       Drupal.heartbeat.comments.loaded, 
@@ -100,7 +100,7 @@
       // Disable form element, uncomment the line below
       formElement.find('.heartbeat-message-comment').attr('disabled', 'disabled');
       
-      var url = Drupal.settings.basePath + 'heartbeat/comment/post';
+      var url = Drupal.settings.heartbeat_comment_post_url;
       var nid = formElement.find('.heartbeat-message-nid').val();
       var node_comment = formElement.find('.heartbeat-message-node-comment').val();
       var arr_list = $('#heartbeat-comments-list-' + formElement.find('.heartbeat-message-uaid').val());
@@ -111,7 +111,8 @@
         nid: (nid == undefined ? 0 : nid), 
         node_comment: (node_comment == undefined ? 0 : node_comment),
         path: location.href,
-        first_comment: !(arr_list.length)
+        first_comment: !(arr_list.length),
+        heartbeat_comment_token: formElement.find('.heartbeat-message-token').val()
       };
 
       // Send POST request

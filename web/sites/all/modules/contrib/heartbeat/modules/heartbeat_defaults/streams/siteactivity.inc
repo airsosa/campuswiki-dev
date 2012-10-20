@@ -19,7 +19,7 @@ class SiteActivity extends HeartbeatStream {
    * Implementation of queryAlter().
    */
   protected function queryAlter() {
-    $this->query->condition('ha.access', 0, '>');
+    $this->query->condition('ha.access', 0, '>=');
   }
 
   /**
@@ -27,7 +27,7 @@ class SiteActivity extends HeartbeatStream {
    * @param object $view
    *   The view handler object by reference to add our part to the query
    */
-  protected function viewsQueryAlter(&$view) {
-    $views->query->condition('ha.access', 0, '>');
+  public function viewsQueryAlter(&$view) {
+    $views->query->condition('ha.access', 0, '>=');
   }
 }

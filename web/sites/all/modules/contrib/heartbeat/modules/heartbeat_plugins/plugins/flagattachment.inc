@@ -6,12 +6,154 @@
  *
  */
 
+ module_load_include('inc', 'heartbeat_plugins', 'includes/heartbeatflagplugin');
+
 /**
  * Class HeartbeatFlagAttachmentPlugin.
  */
 class HeartbeatFlagAttachmentPlugin extends HeartbeatFlagPlugin implements iHeartbeatPlugin  {
 
-  public $flags = array();
+  public $flag = NULL;
+  public $count = 0;
+  public $link = '';
+
+  /**
+   * getAttachments().
+   *
+   * @param $template
+   *   The Heartbeat Template
+   * @param $component_type
+   *   The type of attachment [buttons, content]
+   */
+  public function getAttachments($template, $component_type) {
+
+    $attachments = array();
+
+    $flags = flag_get_flags('heartbeat_activity');
+    foreach ($flags as $flag) {
+      $args = array('@flag' => $flag->name);
+      $attachments[] = array(
+        'name' => $this->settings['plugin_name'] . ':' . $flag->name,
+        'title' => $component_type == 'buttons' ? t('Heartbeat flag buttons for "@flag"', $args) :t('Heartbeat flag count for "@flag"', $args),
+        'enabled' => isset($template->attachments[$component_type]['enabled'][$this->settings['plugin_name'] . ':' . $flag->name]) ? $template->attachments[$component_type]['enabled'][$this->settings['plugin_name'] . ':' . $flag->name] : 0,
+        'weight' => 0,
+      );
+    }
+
+    return $attachments;
+  }
+
+  /**
+   * loadAttachments().
+   *
+   * @param HeartbeatActivity $heartbeatActivity
+   *   The Heartbeat Activity Message object
+   * @param String $name
+   *   The Flagname of the flag attached to the Message.
+   */
+  public function loadAttachments(HeartbeatActivity & $heartbeatActivity, $name = NULL) {
+
+    // We need the flagname for flagmessages.
+    if (!isset($name)) {
+      return;
+    }
+
+    $pluginId = $this->settings['plugin_name'] . ":" . $name;
+    $attachments = $heartbeatActivity->template->attachments;
+
+    // Always load the flag (for content or buttons).
+    $this->flag = flag_get_flag($name);
+
+    // Load the count for this message if needed.
+    if (isset($attachments['content']['enabled'][$pluginId])) {
+      $counts = flag_get_counts('heartbeat_activity', $heartbeatActivity->uaid);
+      $this->count = isset($counts[$name]) ? $counts[$name] : 0;
+    }
+
+    // Load the link for this message if needed.
+    if (isset($attachments['buttons']['enabled'][$pluginId])) {
+      $this->link = flag_create_link($name, $heartbeatActivity->uaid);
+    }
+
+    // Add the plugin to this message.
+    if ($this->flag && _flag_content_enabled($this->flag, 'heartbeat_activity')) {
+      $heartbeatActivity->add_plugin($pluginId, $this);
+    }
+    // Remove the flags that are currently disabled.
+    else {
+      $heartbeatActivity->remove_plugin($pluginId);
+    }
+
+  }
+
+  /**
+   * hasContent().
+   * True if a plugin provides attachments.
+   */
+  public function hasContent() {
+    return TRUE;
+  }
+
+  /**
+   * hasAttachmentsContent().
+   * True if the message has attachments content.
+   */
+  public function hasAttachmentsContent() {
+    // TODO add correct evaluation.
+    return TRUE;
+  }
+
+  /**
+   * renderAttachmentsContent().
+   */
+  public function renderAttachmentsContent(HeartbeatActivity $heartbeatActivity) {
+  	if ($this->count > 0) {
+  		$heartbeatActivity->add_attachment('<span class="heartbeat-flag-count">' . $this->flag->get_label('flag_message', $heartbeatActivity) . '</span>');
+  	}
+  }
+
+  /**
+   * hasButtons().
+   */
+  public function hasButtons() {
+    return TRUE;
+  }
+
+  /**
+   * hasAttachmentsButtons().
+   * True if a message has attachment buttons.
+   */
+  public function hasAttachmentsButtons() {
+    // TODO add correct evaluation.
+    return TRUE;
+  }
+
+  /**
+   * renderButtons().
+   */
+  public function renderButtons(HeartbeatActivity $heartbeatActivity) {
+    if (isset($this->link)) {
+      $heartbeatActivity->add_button($this->link);
+    }
+    elseif ($this->flag && $this->flag->access($heartbeatActivity->uaid)) {
+      $link = $this->flag->theme($this->flag->is_flagged($heartbeatActivity->uaid) ? 'unflag' : 'flag', $heartbeatActivity->uaid, FALSE);
+      $heartbeatActivity->add_button($link);
+    }
+  }
+
+  /**
+   * isStreamAdaptor().
+   */
+  public function isStreamAdaptor() {
+    return TRUE;
+  }
+
+  /**
+   * adaptsStream().
+   */
+  public function adaptsStream() {
+    return TRUE;
+  }
 
   /**
    * streamLoaded().
@@ -26,34 +168,14 @@ class HeartbeatFlagAttachmentPlugin extends HeartbeatFlagPlugin implements iHear
   public function getMenuItems() {
     return array(
       'heartbeat/%ctools_js/flagged/%heartbeat_activity' => array(
-        'title' => 'CTools js callback to show users who flagged activity',
+        'title' => 'People who liked this',
         'type' => MENU_CALLBACK,
         'page callback' => 'heartbeat_plugins_modal_flagging_users',
         'page arguments' => array(1, 3),
         'access arguments' => array('access heartbeat activity profiles'),
+        'file' => 'includes/heartbeatflagplugin.inc',
       ),
     );
-  }
-
-  /**
-   * hasAttachments().
-   */
-  public function hasAttachments() {
-    return isset($this->settings['attachment']) && $this->settings['attachment'];
-  }
-
-  /**
-   * loadAttachments().
-   */
-  public function loadAttachments(HeartbeatActivity $heartbeatActivity) {
-    // nothing to do, buttons only.
-  }
-
-  /**
-   * hasButtons().
-   */
-  public function hasButtons() {
-    return isset($this->settings['attachment']) && $this->settings['attachment'];
   }
 
   /**
@@ -120,85 +242,18 @@ class HeartbeatFlagAttachmentPlugin extends HeartbeatFlagPlugin implements iHear
 
   /**
    * pluginAttachmentForm().
+   *
+   * @param $form
+   * @param $form_values
+   * @param $component_type [buttons, content]
    */
-  public function pluginAttachmentForm(&$form, &$form_state) {
+  public function pluginAttachmentForm(&$form, $form_values, $component_type) {
 
-    // Get the flags for heartbeat activity objects.
-    $flags = flag_get_flags('heartbeat_activity');
-    foreach ($flags as $option) {
-      $options[$option->name] = $option->title;
+    // If no count is available, then this plugin has no content, only buttons.
+    if ($component_type == 'content' && !$this->countEnabled()) {
+      // unset
     }
 
-    // Create element to trigger this plugin.
-    $template = $form_state['item'];
-
-    $form['attachments']['flagattachment'] = array();
-    $form['attachments']['flagattachment']['flags'] = array(
-      '#type' => 'checkboxes',
-      '#default_value' => isset($template->attachments['flagattachment']['flags']) ? drupal_map_assoc($template->attachments['flagattachment']['flags']) : array(),
-      '#title' => t('Add flags to this activity message'),
-      '#options' => $options,
-      '#weight' => 1,
-    );
-
-    // Create element for flag count enabled version.
-    if ($this->countEnabled()) {
-
-      $form['attachments']['flagattachment']['flag_count_enabled'] = array(
-        'flags' => array(
-          '#type' => 'checkbox',
-          '#default_value' => isset($template->attachments['flagattachment']['flag_count_enabled']) ? $template->attachments['flagattachment']['flag_count_enabled']['flags'] : FALSE,
-          '#title' => t('Enable flag count for this activity message'),
-          '#weight' => 0,
-        ),
-      );
-
-    }
-
-  }
-
-  /**
-   * renderAttachments().
-   */
-  public function renderAttachments(HeartbeatActivity $heartbeatActivity) {
-
-    $this->prepareFlags($heartbeatActivity);
-
-    if ($this->countEnabled() && !empty($heartbeatActivity->template->attachments['flagattachment']['flag_flags'])) {
-
-      foreach ($heartbeatActivity->template->attachments['flagattachment']['flag_flags'] as $flagname => $flag) {
-        if ($heartbeatActivity->template->attachments['flagattachment']['flag_count'][$flagname]) {
-          $heartbeatActivity->add_attachment('<span class="heartbeat-flag-count">' . $flag->get_label('flag_message', $heartbeatActivity) . '</span>');
-        }
-      }
-
-    }
-
-  }
-
-  /**
-   * renderButtons().
-   */
-  public function renderButtons(HeartbeatActivity $heartbeatActivity) {
-
-    $this->prepareFlags($heartbeatActivity);
-
-    if (!empty($heartbeatActivity->template->attachments['flagattachment']['flag_flags'])) {
-
-      foreach ($heartbeatActivity->template->attachments['flagattachment']['flag_flags'] as $flagname => $flag) {
-        $link = $flag->theme($flag->is_flagged($heartbeatActivity->uaid) ? 'unflag' : 'flag', $heartbeatActivity->uaid, FALSE);
-        $heartbeatActivity->add_button($link);
-      }
-
-    }
-
-  }
-
-  /**
-   * hasFlags().
-   */
-  protected function hasFlags(HeartbeatActivity $heartbeatActivity) {
-    return isset($this->flags[$heartbeatActivity->uaid]) && $this->flags[$heartbeatActivity->uaid] === TRUE;
   }
 
   /**
@@ -208,44 +263,10 @@ class HeartbeatFlagAttachmentPlugin extends HeartbeatFlagPlugin implements iHear
     return isset($this->settings['count_enabled']) && $this->settings['count_enabled'];
   }
 
-  /**
-   * prepareFlags().
-   */
-  protected function prepareFlags(HeartbeatActivity $heartbeatActivity) {
-
-    $this->flags[$heartbeatActivity->uaid] = FALSE;
-    $flags = $heartbeatActivity->template->attachments['flagattachment']['flags'];
-
-    if (!empty($flags)) {
-
-      // Loop through flags to store runtime data.
-      $counts = flag_get_counts('heartbeat_activity', $heartbeatActivity->uaid);
-      foreach ($flags as $flagname) {
-
-        if (!empty($flagname) && !is_numeric($flagname)) {
-
-          $heartbeatActivity->template->attachments['flagattachment']['flag_flags'][$flagname] = flag_get_flag($flagname);
-
-          // Store the link.
-          $heartbeatActivity->template->attachments['flagattachment']['flag_link'][$flagname] = flag_create_link($flagname, $heartbeatActivity->uaid);
-
-          // Store count to allow theme overrides to use this in another way.
-          $heartbeatActivity->template->attachments['flagattachment']['flag_count'][$flagname] = isset($counts[$flagname]) ? $counts[$flagname] : 0;
-
-          $this->flags[$heartbeatActivity->uaid] = TRUE;
-
-        }
-
-      }
-
-    }
-
-  }
-
 }
 
 /**
- * Implements a Heartbeat message flag.
+ * Exposes a Heartbeat Message Flag.
  */
 class flag_heartbeat_message extends flag_flag {
 

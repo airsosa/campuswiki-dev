@@ -27,14 +27,26 @@ abstract class HeartbeatStream {
   // Well-formed activity messages.
   public $messages = array();
 
+  // String prefix on top of the stream.
+  public $prefix = '';
+
+  // String suffix under a stream.
+  public $suffix = '';
+
   // Templates available to show.
   public $templates = array();
+
+  // Contextual arguments.
+  public $contextual_arguments = array();
 
   // Denied templates.
   protected $templates_denied = array();
 
   // Language at display time.
   protected $language = LANGUAGE_NONE;
+
+  // exclude Og.
+  protected $exclude_og = FALSE;
 
   // The stream owner or activity watcher.
   protected $_uid = 0;
@@ -69,10 +81,6 @@ abstract class HeartbeatStream {
   // Can page means if we can show more messages
   protected $canPage = FALSE;
 
-  // User viewer types.
-  const VIEWER = 0;
-  const VIEWED = 1;
-
   // User view type of the stream instance.
   protected $_whoisuser_type = self::VIEWER;
 
@@ -82,11 +90,17 @@ abstract class HeartbeatStream {
   // The user who's activity stream is viewed.
   protected $viewed = null;
 
+  // View mode to display message.
+  protected $view_mode = 'default';
 
   protected $_whoisuser_types = array(
     self::VIEWER => 'Viewing user',
     self::VIEWED => 'Viewed user'
   );
+
+  // User viewer types.
+  const VIEWER = 0;
+  const VIEWED = 1;
 
   /**
    * Constructor
@@ -111,6 +125,8 @@ abstract class HeartbeatStream {
 
     $this->construct();
 
+    $this->setContextualArguments();
+
   }
 
   /**
@@ -118,6 +134,22 @@ abstract class HeartbeatStream {
    */
   public function construct() {
 
+  }
+
+  /**
+   * setContextualArguments().
+   */
+  protected function setContextualArguments() {
+
+    // Add a contextual argument if we are viewing a user.
+    if (!empty($_GET['contextualArguments']) && isset($_GET['contextualArguments']['uid_target'])) {
+      $this->contextual_arguments['uid_target'] = $_GET['contextualArguments']['uid_target'];
+    }
+    elseif ($this->viewed->uid != $this->viewer->uid) {
+      $this->contextual_arguments['uid_target'] = $this->viewed->uid;
+    }
+
+    drupal_add_js(array('heartbeatContextArguments' => $this->contextual_arguments), "setting");
   }
 
   /**
@@ -137,7 +169,7 @@ abstract class HeartbeatStream {
    * @param $text String of found error
    * @return void
    */
-  protected function addError($error) {
+  public function addError($error) {
     $this->_errors[] = $error;
     $this->_has_errors = TRUE;
   }
@@ -166,8 +198,18 @@ abstract class HeartbeatStream {
    * @param $text
    * @return boolean to indicate the access to the stream
    */
-  protected function hasAccess() {
+  public function hasAccess() {
     return TRUE;
+  }
+
+  /**
+   * canPostActivityStatuses().
+   * TODO Remove this here. The stream plugins should be stored
+   * in the stream object. This kind of access will become much
+   * easier to implement.
+   */
+  public function canPostActivityStatuses() {
+  	return TRUE;
   }
 
   /**
@@ -181,7 +223,7 @@ abstract class HeartbeatStream {
     $this->language = $language->language;
     $languages = array('und' => 'und');
     // TODO check if we are going to use no languages at all at log time
-    $languages[$language->language] = $language->language;
+    $languages[str_replace('-', '_', $language->language)] = $language->language;
 
     return $languages;
 
@@ -235,12 +277,51 @@ abstract class HeartbeatStream {
       $this->_whoisuser_type = self::VIEWED;
       $this->viewed = $account;
     }
+    // If not, we need to derive the account if possible.
     else {
-      $this->_whoisuser_type = self::VIEWER;
-      $this->viewed = $this->viewer;
+      // If the logged-in user is watching the stream on a profile page,
+      // the viewed user needs to be changed.
+      // This could be through ajax or normal.
+      $args = arg();
+      if (!empty($_GET['viewed_uid']) && is_numeric($_GET['viewed_uid']) && $account = user_load($_GET['viewed_uid'])) {
+        $this->_whoisuser_type = self::VIEWED;
+        $this->viewed = $account;
+      }
+      elseif ($args[0] == 'user' && is_numeric($args[1])) {
+      	// TODO Change this to access denied if not available.
+        if (!empty($args[2])) {
+        //if (!empty($args[2]) && $args[2] == $this->config->settings['stream_profile_path']) {
+          $this->_whoisuser_type = self::VIEWED;
+          $this->viewed = user_load($args[1]);
+        }
+        else {
+          $this->_whoisuser_type = self::VIEWER;
+          $this->viewed = $this->viewer;
+        }
+      }
+      else {
+        $this->_whoisuser_type = self::VIEWER;
+        $this->viewed = $this->viewer;
+      }
     }
+
+    drupal_add_js(array('viewed_uid' => $this->viewed->uid), "setting");
     $this->_uid = $this->viewed->uid;
 
+  }
+
+  /**
+   * getViewedId().
+   */
+  public function getViewedId() {
+    return $this->_uid;
+  }
+
+  /**
+   * setViewMode().
+   */
+  public function setViewMode($view_mode) {
+    $this->view_mode = $view_mode;
   }
 
   /**
@@ -273,6 +354,13 @@ abstract class HeartbeatStream {
    */
   public function setLatestActivityId($id) {
     $this->latest_activity_id = $id;
+  }
+
+  /**
+   * excludeOg().
+   */
+  public function excludeOg($status) {
+    $this->exclude_og = $status;
   }
 
   /**
@@ -332,6 +420,13 @@ abstract class HeartbeatStream {
     else {
       $this->messages_max = $this->config->block_items_max;
     }
+  }
+
+  /**
+   * numberOfMessages().
+   */
+  public function numberOfMessages() {
+  	return count($this->messages);
   }
 
   /**
@@ -418,25 +513,29 @@ abstract class HeartbeatStream {
    */
   public function result() {
 
-    if (!$this->hasAccess()) {
-      drupal_access_denied();
-      exit();
+    if ($this->hasAccess()) {
+
+      $this->createQuery();
+      $this->queryAlter();
+
+      $messages = $this->executeQuery();
+
+      $allowed_tags = heartbeat_allowed_html_tags();
+
+      // Check on xss attack before other modules can change messages.
+      // Delegate the time.
+      foreach ($messages as $key => $message) {
+        $messages[$key]->message = filter_xss($messages[$key]->message, $allowed_tags);
+        $messages[$key]->message_concat = filter_xss($messages[$key]->message_concat, $allowed_tags);
+        $messages[$key]->show_message_times_grouped = $this->config->show_message_times_grouped;
+      }
+
+      return $messages;
+
     }
-    //$this->prepareArguments();
-    $this->createQuery();
-    $this->queryAlter();
-
-    $messages = $this->executeQuery();
-
-    // Check on xss attack before other modules can change messages.
-    // Delegate the time.
-    foreach ($messages as $key => $message) {
-      $messages[$key]->message = filter_xss($messages[$key]->message);
-      $messages[$key]->message_concat = filter_xss($messages[$key]->message_concat);
-      $messages[$key]->show_message_times_grouped = $this->config->show_message_times_grouped;
+    else {
+      return NULL;
     }
-
-    return $messages;
 
   }
 
@@ -450,10 +549,8 @@ abstract class HeartbeatStream {
     $templates = ctools_export_crud_load_all('heartbeat_messages');
 
     // Deny messages that have been denied through stream configuration.
-    if (!empty($this->config->messages_denied)) {
-      foreach ($this->config->messages_denied as $denied_message) {
-        $this->templates_denied[$denied_message] = $denied_message;
-      }
+    foreach ($this->config->messages_denied as $denied_message) if (!empty($denied_message)) {
+      $this->templates_denied[$denied_message] = $denied_message;
     }
 
     // Prepare the allowed templates for this stream.
@@ -480,7 +577,14 @@ abstract class HeartbeatStream {
   }
 
   /**
-   * createQuery
+   * createQuery().
+   *
+   * This query is the most important preparation to get the messages
+   * in a stream.
+   * Note that the access logged at the time of activity "ha.access" as
+   * well as the access at display time "hut.status". The perms property
+   * in the template is not used by design. This is something to discuss.
+   * @todo Discuss
    *
    * @param $text
    * @return HeartbeatParser object
@@ -488,9 +592,31 @@ abstract class HeartbeatStream {
   protected function createQuery() {
 
     $this->query = db_select('heartbeat_activity', 'ha')->extend('PagerActivity');
-    $this->query->fields('ha');
-    $this->query->addField('ha', 'variables', 'variables');
-    $this->query->where(" ha.language IN (:languages) ", array(':languages' => $this->getCurrentLanguages()));
+    $this->query->fields('ha', array('uaid', 'message_id', 'uid', 'access'));
+//    $this->query->addField('ha', 'variables', 'variables');
+//    $this->query->addField('ha', 'access', 'access');
+
+    // Override the permission based on the user profile status.
+    $this->query->leftJoin('heartbeat_user_templates', 'hut', ' ha.uid = hut.uid AND ha.message_id = hut.message_id ');
+    $this->query->addField('hut', 'status', 'access_status');
+    // The user_access field holds the least access known. (NULL = HEARTBEAT_PUBLIC_TO_ALL).
+    $access_expression = "LEAST ( IFNULL ( ha.access, " . HEARTBEAT_PUBLIC_TO_ALL . "), IFNULL ( hut.status, " . HEARTBEAT_PUBLIC_TO_ALL . "))";
+    $this->query->addExpression($access_expression, 'user_access');
+
+    // Exclude unpublished comments.
+    if (module_exists('comment')) {
+      $this->query->leftJoin('comment', 'c', 'ha.cid = c.cid');
+      $this->query->where("c.status = 1 OR ha.cid = 0");
+    }
+
+    // Include only the required language(s).
+    $db_or = db_or();
+    foreach ($this->getCurrentLanguages() as $lang_code) {
+      $db_or->condition('ha.language', $lang_code, "=");
+    }
+    if ($db_or->count()) {
+      $this->query->conditions($db_or);
+    }
 
     // Condition on time of creation.
     if ($this->latest_activity_id > 0) {
@@ -502,58 +628,61 @@ abstract class HeartbeatStream {
       $this->query->setOffsetTime($this->_offset_time, $this->oldest_date);
     }
 
-    // Condition to skip the active user or not.
-    if ($this->skipActiveUser()) {
-      $this->query->condition("ha.uid", $this->viewer->uid);
+    // Condition to exclude organic groups specific messages.
+    if ($this->exclude_og) {
+      $this->query->condition('ha.in_group', 1, '<>');
     }
 
-    // Add access checks for each template permission specific.
+    // Prepare "OR" clause for logical activity access conditions.
     $or = db_or();
-    foreach ($this->templates as $perm => $templates) {
-      switch ($perm) {
-        case HEARTBEAT_PUBLIC_TO_CONNECTED:
-          $this->viewed->relations = heartbeat_related_uids($this->viewed->uid);
-          //drupal_set_message('HEARTBEAT_PUBLIC_TO_CONNECTED: ' . implode(', ', array_keys($templates)) . ' ____ ' . implode(' - ', $this->viewed->relations));
-          $or->condition(db_and()
-            ->condition('ha.uid', $this->viewed->relations, 'IN')
-            ->condition('ha.access', $perm, '>=')
-            ->condition('ha.message_id', array_keys($templates), 'IN')
-          );
-          break;
-        case HEARTBEAT_PUBLIC_TO_ADDRESSEE:
-          //drupal_set_message('HEARTBEAT_PUBLIC_TO_ADDRESSEE: ' . implode(', ', array_keys($templates)));
-          $or->condition(db_and()
-            ->condition(db_or()
-              ->condition('ha.uid', $this->viewer->uid)
-              ->condition('ha.uid_target', $this->viewer->uid)
-            )
-            ->condition('ha.uid', 0, '!=')
-            ->condition('ha.uid_target', 0, '!=')
-            ->condition('ha.access', $perm)
-            ->condition('ha.message_id', array_keys($templates), 'IN')
-          );
-          break;
-        case HEARTBEAT_PRIVATE:
-          //drupal_set_message('HEARTBEAT_PRIVATE: ' . implode(', ', array_keys($templates)));
-          $or->condition(db_and()
-            ->condition('ha.uid', $this->viewer->uid)
-            ->condition('ha.access', $perm)
-            ->condition('ha.message_id', array_keys($templates), 'IN')
-          );
-          break;
-        case HEARTBEAT_PUBLIC_TO_ALL:
-        default:
-          //drupal_set_message('HEARTBEAT_PUBLIC_TO_ALL: ' . implode(', ', array_keys($templates)));
-          $or->condition(db_and()
-            ->condition('ha.access', $perm)
-            ->condition('ha.message_id', array_keys($templates), 'IN')
-          );
-      }
+
+    // Include messages where the actor addressed the viewer.
+    $or->condition(db_and()
+      ->where($access_expression . " = " . HEARTBEAT_PUBLIC_TO_ADDRESSEE)
+      ->condition(db_or()
+        ->condition(db_and()
+          ->condition('ha.uid_target', $this->viewer->uid)
+          ->condition('ha.uid_target', 0, '!=')
+        )
+        ->condition(db_and()
+          ->condition('ha.uid', $this->viewer->uid)
+          ->condition('ha.uid', 0, '!=')
+        )
+      )
+    );
+
+    // Include messages where the actor is somehow connected to the viewer.
+    $this->viewer->relations = heartbeat_related_uids($this->viewer->uid);
+    $or->condition(db_and()
+      ->where($access_expression . " >= " .HEARTBEAT_PUBLIC_TO_CONNECTED)
+      ->condition(db_or()
+        ->condition('ha.uid', $this->viewer->relations, 'IN')
+        ->condition('ha.uid_target', $this->viewer->relations, 'IN')
+      )
+    );
+
+    // Include messages that are public to everyone.
+    //$or->condition('ha.access', HEARTBEAT_PUBLIC_TO_ALL, '=');
+    $or->where($access_expression . " = " . HEARTBEAT_PUBLIC_TO_ALL);
+
+    // Include message where the viewer is the actor and sees all own activity.
+    if (!$this->skipActiveUser()) {
+      // Include private messages.
+      $or->condition(db_and()
+        ->condition("ha.uid", $this->viewer->uid)
+        ->condition("ha.access", HEARTBEAT_PRIVATE, '>=')
+      );
     }
+    // Or completely skip that user.
+    else {
+      $this->query->condition('ha.uid', $this->viewer->uid, '!=');
+    }
+
     if (count($or->conditions())) {
       $this->query->condition($or);
     }
 
+    // Exclude denied message templates.
     if (!empty($this->templates_denied)) {
       $this->query->where("ha.message_id NOT IN (:messages)", array(':messages' => array_unique($this->templates_denied)));
     }
@@ -571,34 +700,187 @@ abstract class HeartbeatStream {
    */
   protected function executeQuery() {
 
-    //drupal_set_message(strtr((string) $this->query, $this->query->getArguments()));
+    // dqm($this->query);
     $result = $this->query->execute()->fetchAll();
     $messages = array();
 
-    foreach ($result as $row) {
-
+    $uaids = array();
+    foreach ($result as $key => $row) {
       if ($template = $this->getTemplate($row->message_id)) {
-
-        $heartbeatactivity = new HeartbeatActivity($row, $template);
-        $heartbeatactivity->count = 1;
-
-        $messages[$row->uaid] = $heartbeatactivity;
-        HeartbeatMessagePool::getInstance()->addMessage($heartbeatactivity);
-
+        $uaids[$key] = $row->uaid;
       }
+    }
+
+    $messages = heartbeat_activity_load_multiple($uaids);
+
+    return $messages;
+
+  }
+
+  /**
+   * Alter the query object.
+   */
+  protected function queryAlter() {}
+
+  /**
+   * viewsQueryAlter
+   *
+   * @param $view Object View
+   * @return void
+   */
+  public function viewsQueryAlter(&$view) {}
+
+  /**
+   * Function to check access on messages
+   * This behaviour is set by a heartbeat message configuration
+   * to overrule the chosen display access type
+   */
+  protected function checkAccess(& $messages) {
+
+    // This hook is invoked BEFORE calculating the maximum
+    // number of messages to show,
+    // giving other modules the opportunity to remove messages
+    // based on their own parameters and custom reasons.
+    $hook = 'heartbeat_messages_alter';
+    foreach (module_implements($hook) as $module) {
+      $function = $module .'_'. $hook;
+      $result = $function($messages, $this);
+    }
+
+    foreach ($messages as $key => $message) {
+
+      // Check node access if information is available.
+      if (!empty($message->nid) && !empty($message->variables['node_type'])) {
+        $dummy_node = new stdClass();
+        $dummy_node->nid = $message->nid;
+        $dummy_node->uid = $message->variables['node_uid'];
+        $dummy_node->status = $message->variables['node_status'];
+        $dummy_node->type = $message->variables['node_type'];
+        if (!node_access('view', $dummy_node)) {
+          unset($messages[$key]);
+          continue;
+        }
+      }
+
+      // Check node target access if information is available.
+      if (!empty($message->nid_target) && !empty($message->variables['node_target_type'])) {
+        $dummy_node = new stdClass();
+        $dummy_node->nid = $message->nid_target;
+        $dummy_node->uid = $message->variables['node_target_uid'];
+        $dummy_node->status = $message->variables['node_target_status'];
+        $dummy_node->type = $message->variables['node_target_type'];
+        if (!node_access('view', $dummy_node)) {
+          unset($messages[$key]);
+        }
+      }
+    }
+
+  }
+
+  /**
+   * Function to check if more/older messages can be loaded
+   *
+   * @return Boolean has more messages
+   */
+  public function hasMoreMessages() {
+
+    if ($this->isPage()) {
+      $display_pager = $this->config->page_show_pager;
+    }
+    else {
+      $display_pager = $this->config->block_show_pager;
+    }
+    return $this->canPage && $display_pager;
+  }
+
+  /**
+   * Create the well-formed activity messages from a result.
+   * HeartbeatParser will do most of the work here.
+   */
+  public function parseMessages($result) {
+
+    $heartbeatparser = new HeartbeatParser();
+    $heartbeatparser->set_timespan_gap($this->config->grouping_seconds);
+    $heartbeatparser->build_sets($result);
+    $heartbeatparser->merge_sets();
+    $messages = $heartbeatparser->get_messages();
+
+    // $messages = $heartbeatparser->remove_broken_messages();
+    $num_total_messages = count($messages);
+
+    // From here we know the number of messages actualy loaded (and allowed)
+    $messages = array_slice($messages, 0, $this->messages_max);
+
+    $i = 0;
+    foreach ($messages as $key => $message) {
+      $message->index = $i;
+      $i++;
+    }
+
+    // Set the possibility of a pager appearence
+    if ($num_total_messages > $this->messages_max) {
+      $this->canPage = TRUE;
     }
 
     return $messages;
   }
 
   /**
-   * processViewsQuery().
+   * Function that reorganizes a query result of messages
+   *   into a stream of heartbeat activity objects.
+   *
+   * @return $messages
+   *   array of messages
+   */
+  public function execute() {
+
+    // Fetch the messages from database for current Stream
+    $result = $this->result();
+
+    if (!isset($result)) {
+
+    }
+    elseif (!empty($result)) {
+
+      // Filter messages by permission.
+      $this->checkAccess($result);
+
+      // Group the activity messages as configured
+      $messages = $this->parseMessages($result);
+
+      // Give contributes modules the opportunity to load
+      // additions for the heartbeat activity message object.
+      $hook = 'heartbeat_load';
+      foreach (module_implements($hook) as $module) {
+        $function = $module .'_'. $hook;
+        // $messages should be implemented by reference!!!
+        $function($result, $this);
+      }
+
+      // Let other modules retheme or completely rebuild messages
+      $hook = 'heartbeat_theme_alter';
+      foreach (module_implements($hook) as $module) {
+        $function = $module .'_'. $hook;
+        $result = $function($messages, $this);
+      }
+
+      $this->messages = $messages;
+
+    }
+
+    return $this->messages;
+
+  }
+
+  /**
+   * executeViews().
    *
    * Method to represent the messages if comes from views.
    */
-  public function processViewsQuery($values = NULL) {
+  public function executeViews($values = NULL) {
 
     $activities = heartbeat_activity_load_multiple($values);
+
     if (empty($activities)) {
       return;
     }
@@ -622,7 +904,7 @@ abstract class HeartbeatStream {
     $hook = 'heartbeat_theme_alter';
     foreach (module_implements($hook) as $module) {
       $function = $module .'_'. $hook;
-      $result = $function($messages, $this);
+      $function($messages, $this);
     }
 
     $this->messages = $messages;
@@ -637,150 +919,59 @@ abstract class HeartbeatStream {
   }
 
   /**
-   * Alter the query object.
-   */
-  protected function queryAlter() {}
-
-  /**
-   * viewsQueryAlter
+   * Render().
    *
-   * @param $view Object View
-   * @return void
+   * Function to create a renderable build array.
    */
-  protected function viewsQueryAlter(&$view) {}
+  public function render() {
 
-  /**
-   * Function to check access on messages
-   * This behaviour is set by a heartbeat message configuration
-   * to overrule the chosen display access type
-   */
-  protected function checkAccess(& $messages) {
+    $build = array();
 
-    // First check access on message perms, roles and node access.
-    foreach (array_keys($messages) as $key) {
+    if ($this->hasAccess()) {
 
-      $message = & $messages[$key];
+      $path = drupal_get_path('module', 'heartbeat');
+      $build = array('#type' => 'markup', 'messages' => array());
+      $weight = 0;
 
-      try {
-
-        // Skip messages with no reason given.
-        if (!$message->hasAccess($this->viewer, $this)) {
-          $this->addError('Activity message #'. $message->uaid . ' is not allowed in the stream. No reason given.');
-          unset($messages[$key]);
-          continue;
-        }
-
+      // Get the messages.
+      foreach (array_keys($this->messages) as $key) {
+        $build['messages'][$key] = heartbeat_activity_view($this->messages[$key], $this->view_mode);
+        $build['messages'][$key]['#weight'] = $weight;
+        $weight++;
       }
-      // Skip messages while adding the error.
-      catch (HeartbeatInvalidStreamException $e) {
-        $this->addError($e->getMessage());
-        unset($messages[$key]);
-        continue;
+      $build['messages']['#sorted'] = TRUE;
+
+      $build['pager'] = array(
+        '#stream' => $this,
+        '#theme' => 'activity_pager',
+        '#weight' => 5,
+      );
+
+      if ($this->needsModal()) {
+        // Add CTools modal requirements.
+        heartbeat_ctools_modal_prepare();
       }
+      // Add the javascript and css files.
+      drupal_add_js($path . '/js/heartbeat.js');
+      if (variable_get('heartbeat_include_default_style', 1)) {
+      	drupal_add_css($path . '/css/heartbeat.css');
+      }
+      // Dirty hack to fix polled streams when no js/css can be included on custom ajax command.
+	    drupal_add_css($path . '/layouts/heartbeat_2col/heartbeat_2col.css');
 
     }
 
-    // This hook is invoked BEFORE calculating the maximum
-    // number of messages to show,
-    // giving other modules the opportunity to remove messages
-    // based on their own parameters and custom reasons.
-    $hook = 'heartbeat_messages_alter';
-    foreach (module_implements($hook) as $module) {
-      $function = $module .'_'. $hook;
-      $result = $function($messages, $this->_heartbeatState);
-    }
-
-    // The difficulty remains in having the possibility to leave the
-    // user with no site activity at display. Any propositions?
-    // In short: problem when querying to few messages, having lots
-    // of them denied and leaving the user with no messages left.
-
+    return $build;
   }
 
   /**
-   * Function to check if more/older messages can be loaded
-   *
-   * @return Boolean has more messages
+   * modifyActivityMessage()
    */
-  public function hasMoreMessages() {
+  public function modifyActivityMessage(HeartbeatActivity $heartbeatActivity) {
 
-    if ($this->isPage()) {
-      $display_pager = $this->config->page_show_pager;
+    if (!empty($this->contextual_arguments['uid_target'])) {
+      $heartbeatActivity->uid_target = $this->contextual_arguments['uid_target'];
     }
-    else {
-      $display_pager = $this->config->block_show_pager;
-    }
-
-    return $this->canPage && $display_pager;
-  }
-
-  /**
-   * Create the well-formed activity messages from a result.
-   * HeartbeatParser will do most of the work here.
-   */
-  public function parseMessages($result) {
-
-    $heartbeatparser = new HeartbeatParser();
-    $heartbeatparser->set_timespan_gap($this->config->grouping_seconds);
-    $heartbeatparser->build_sets($result);
-    $heartbeatparser->merge_sets();
-    $messages = $heartbeatparser->get_messages();
-
-    // $messages = $heartbeatparser->remove_broken_messages();
-    $num_total_messages = count($messages);
-
-    // From here we know the number of messages actualy loaded (and allowed)
-    $messages = array_slice($messages, 0, $this->messages_max);
-
-    // Set the possibility of a pager appearence
-    if ($num_total_messages > $this->messages_max) {
-      $this->canPage = TRUE;
-    }
-
-    return $messages;
-  }
-
-  /**
-   * Function that reorganizes a query result of messages
-   *   into a stream of heartbeat activity objects.
-   *
-   * @return $messages
-   *   array of messages
-   */
-  public function execute() {
-
-    // Fetch the messages from database for current Stream
-    $result = $this->result();
-
-    if (empty($result)) {
-      return array();
-    }
-
-    // Filter messages by permission
-    $this->checkAccess($result);
-
-    // Give contributes modules the opportunity to load
-    // additions for the heartbeat activity message object
-    $hook = 'heartbeat_load';
-    foreach (module_implements($hook) as $module) {
-      $function = $module .'_'. $hook;
-      // $messages should be implemented by reference!!!
-      $function($result, $this);
-    }
-
-    // Group the activity messages as configured
-    $messages = $this->parseMessages($result);
-
-    // Let other modules retheme or completely rebuild messages
-    $hook = 'heartbeat_theme_alter';
-    foreach (module_implements($hook) as $module) {
-      $function = $module .'_'. $hook;
-      $result = $function($messages, $this);
-    }
-
-    $this->messages = $messages;
-
-    return $this->messages;
 
   }
 

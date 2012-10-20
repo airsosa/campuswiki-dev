@@ -19,9 +19,10 @@ $plugin = array(
   'title singular proper' => t('Heartbeat plugin'),
   'title plural' => t('Heartbeat plugins'),
   'title plural proper' => t('Heartbeat plugins'),
-  'form' => array(
-    'settings' => 'heartbeat_plugins_ctools_edit_ui_form',
-    'validate' => 'heartbeat_plugins_ctools_edit_ui_validate',
+
+  'handler' => array(
+    'class' => 'ctools_export_ui_heartbeat_plugin',
+    'parent' => 'ctools_export_ui',
   ),
 
 );

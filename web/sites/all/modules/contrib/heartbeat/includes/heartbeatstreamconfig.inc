@@ -44,6 +44,9 @@ class HeartbeatStreamConfig extends HeartbeatCtoolsObject {
   // Number to indicate how a block-pager should be shown.
   public $block_show_pager = 0;
 
+  // View mode for the block.
+  public $block_view_mode = 'default';
+
   // Maximum number of items in the page display.
   public $page_items_max = 50;
 
@@ -52,6 +55,9 @@ class HeartbeatStreamConfig extends HeartbeatCtoolsObject {
 
   // Boolean to indicate if the pager is ajax-driven.
   public $page_pager_ajax = 0;
+
+  // View mode for the page.
+  public $page_view_mode = 'default';
 
   // Setting for the number of grouped items maximum.
   public $show_message_times = 1;
@@ -74,11 +80,14 @@ class HeartbeatStreamConfig extends HeartbeatCtoolsObject {
   // Timestamp used to poll for newer messages.
   public $poll_messages = 0;
 
-  // Page disabled indicates if there is page for this stream or not.
-  public $page_disabled = FALSE;
+  // How to notify there are newer messages.
+  public $poll_messages_type = 0;
 
-  // Profile page exists.
-  public $profilePage = FALSE;
+  // Stream path is the path to the stream page (optional).
+  public $stream_path = '';
+
+  // Stream user path is the path to a stream on the profile page (optional).
+  public $stream_profile_path = '';
 
   // Settings variable
   public $settings = array();

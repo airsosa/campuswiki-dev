@@ -15,10 +15,10 @@
  */
 function heartbeat_example_node_insert($node) {
   heartbeat_api_log('heartbeat_add_node', $node->uid, 0, $node->nid, 0, array(
-    '@node_title' => l($node->title, 'node/'. $node->nid),
-    '@username'=> l(user_load($node->uid)->name, 'user/'. $node->uid),
-    '@node_type' => $node->type,
-    '@types' => $node->type .'s'
+    '!node_title' => l($node->title, 'node/'. $node->nid),
+    '!username'=> l(user_load($node->uid)->name, 'user/'. $node->uid),
+    '!node_type' => $node->type,
+    '!types' => $node->type .'s'
   ), HEARTBEAT_PUBLIC_TO_ALL, $node->created);
 
 }
@@ -29,10 +29,10 @@ function heartbeat_example_node_insert($node) {
  */
 function heartbeat_example_node_update($node) {
   heartbeat_api_log('heartbeat_edit_node', $node->uid, 0, $node->nid, 0, array(
-    '@node_title' => l($node->title, 'node/'. $node->nid),
-    '@username'=> l(user_load($node->uid)->name, 'user/'. $node->uid),
-    '@node_type' => $node->type,
-    '@types' => $node->type .'s'
+    '!node_title' => l($node->title, 'node/'. $node->nid),
+    '!username'=> l(user_load($node->uid)->name, 'user/'. $node->uid),
+    '!node_type' => $node->type,
+    '!types' => $node->type .'s'
   ), HEARTBEAT_PUBLIC_TO_ALL);
 
 }

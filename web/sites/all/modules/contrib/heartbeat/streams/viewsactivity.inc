@@ -9,7 +9,6 @@
  *
  */
 
-
 /**
  * Class ViewsActivity
  *
@@ -18,11 +17,20 @@
  */
 class ViewsActivity extends HeartbeatStream {
 
+	private $streamName = NULL;
+	public $rowPlugin = FALSE; // Default for fields (TRUE for row plugin).
+
   /**
-   * Implementation of queryAlter().
+   * Fake constructor to hook this method instead of the constructor.
+   */
+  public function construct() {
+  	parent::construct();
+  }
+
+  /**
+   * Implements queryAlter().
    */
   protected function queryAlter() {
-    //$this->query->condition('ha.access', 0, '>');
   }
 
   /**
@@ -30,7 +38,6 @@ class ViewsActivity extends HeartbeatStream {
    * @param object $view
    *   The view handler object by reference to add our part to the query
    */
-  protected function viewsQueryAlter(&$view) {
-    //$views->query->condition('ha.access', 0, '>');
+  public function viewsQueryAlter(&$view) {
   }
 }

@@ -221,24 +221,42 @@ function heartbeat_schema() {
       'language' => array('language'),
     ),
   );
+  $schema['heartbeat_activity']['fields']['in_group'] = array(
+    'type' => 'int',
+	  'not null' => TRUE,
+	  'size' => 'big',
+	  'description' => t('Indicates whether the activity is related to a group.'),
+	  'default' => 0,
+  );
+	$schema['heartbeat_activity']['indexes']['in_group'] = array('in_group');
+  $schema['heartbeat_user_templates'] = heartbeat_install_table_user_templates();
 
-  $schema['heartbeat_translations'] = array(
+  return $schema;
+}
+
+function heartbeat_install_table_user_templates() {
+  return array(
     'description' => t('Table that connects translations of the same activity.'),
     'fields' => array(
-      'uaid' => array(
+      'uid' => array(
         'type' => 'int',
         'not null' => TRUE,
-        'description' => t('The uaid of the connection.'),
+        'description' => t('The referenced user ID.'),
       ),
-      'tuaid' => array(
+      'message_id' => array(
+        'type' => 'varchar',
+        'length' => 250,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => t('The template message ID.'),
+      ),
+      'status' => array(
         'type' => 'int',
         'not null' => TRUE,
-        'description' => t('The corresponding tuaid.'),
+        'description' => t('The status of the template.'),
       ),
     ),
   );
-
-  return $schema;
 }
 
 /**
@@ -398,4 +416,52 @@ function heartbeat_update_7013() {
     ));
   }
 
+}
+
+/**
+ * Add database table for the heartbeat user templates.
+ */
+function heartbeat_update_7014() {
+  if (!db_table_exists('heartbeat_user_templates')) {
+    db_create_table('heartbeat_user_templates', heartbeat_install_table_user_templates());
+  }
+}
+
+/**
+ * Remove table {heartbeat_translations} and making activity language independant.
+ */
+function heartbeat_update_7015() {
+  db_drop_table('heartbeat_translations');
+}
+
+/**
+ * Add unique keys to the heartbeat activity table.
+ */
+function heartbeat_update_7016() {
+  // Add in unique keys and indexes.
+  db_add_unique_key('heartbeat_activity', 'uaid', array('uaid'));
+  db_add_unique_key('heartbeat_activity', 'uaid_uid', array('uaid', 'uid'));
+  db_add_unique_key('heartbeat_activity', 'uaid_nid', array('uaid', 'nid'));
+  db_add_unique_key('heartbeat_activity', 'uaid_uid_nid', array('uaid', 'uid', 'nid'));
+}
+
+/**
+ * Set 'in_group' for existing activity records.
+ */
+function heartbeat_update_7017() {
+  // Add the in_group field if it does not exists yet.
+  if (!db_field_exists('heartbeat_activity', 'in_group')) {
+    db_add_field('heartbeat_activity', 'in_group', array(
+      'type' => 'int',
+      'not null' => TRUE,
+      'size' => 'big',
+      'description' => t('Indicates whether the activity is related to a group.'),
+      'default' => 0,
+    ));
+    // Change the value for each record that has something to do with groups.
+    if (module_exists('og')) {
+    	db_query("UPDATE {heartbeat_activity} SET in_group = 1 WHERE nid IN (SELECT DISTINCT etid FROM {og})");
+      db_query("UPDATE {heartbeat_activity} SET in_group = 1 WHERE nid_target IN (SELECT DISTINCT etid FROM {og})");
+    }
+  }
 }

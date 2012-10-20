@@ -16,24 +16,28 @@ class RelationsActivity extends HeartbeatStream {
    * Fake constructor to hook this method instead of the constructor.
    */
   public function construct() {
+
     // Add the relations to the viewed user object.
-    $this->viewed->relations = heartbeat_related_uids($this->viewed->uid);
+    $this->viewer->relations = heartbeat_related_uids($this->viewer->uid);
+
+    // This stream needs the viewed relations as well. Load them if different.
+    if ($this->viewed->uid != $this->viewer->uid) {
+      $this->viewed->relations = heartbeat_related_uids($this->viewed->uid);
+    }
+    else {
+      $this->viewed->relations = $this->viewer->relations;
+    }
+
   }
 
   /**
    * Implementation of queryAlter().
    */
   protected function queryAlter() {
-
-    // Access needs to be higher than private or addressee.
-    $this->query->condition('ha.access', HEARTBEAT_PUBLIC_TO_ADDRESSEE, '>');
-
-    // The viewed user is central in a set of related users,
-    // or where the viewed user is the target user in the activity.
-    $this->query->condition(db_or()
-      ->condition('ha.uid', $this->viewed->relations, 'IN')
-      ->condition('ha.uid_target', $this->viewed->uid)
-    );
+    // This stream is limited to the messages owned by the "viewed" user
+    // and his/her relations (friends, fans, ...).
+    $this->query->condition('ha.access', HEARTBEAT_PUBLIC_TO_ADDRESSEE, '>=');
+    $this->query->condition('ha.uid', $this->viewed->relations, 'IN');
 
   }
 
@@ -42,17 +46,13 @@ class RelationsActivity extends HeartbeatStream {
    * @param object $view
    *   The view handler object by reference to add our part to the query
    */
-  protected function viewsQueryAlter(&$view) {
+  public function viewsQueryAlter(&$view) {
 
-    // Access needs to be higher than private or addressee.
-    $view->query->condition('ha.access', HEARTBEAT_PUBLIC_TO_ADDRESSEE, '>');
-
-    // The viewed user is central in a set of related users,
-    // or where the viewed user is the target user in the activity.
-    $view->query->condition(db_or()
-      ->condition('ha.uid', $this->viewed->relations, 'IN')
-      ->condition('ha.uid_target', $this->viewed->uid)
-    );
+    // This stream is limited to the messages owned by the "viewed" user
+    // and his/her relations (friends, fans, ...).
+    $query = $view->query;
+    $query->add_where(0, "access", HEARTBEAT_PUBLIC_TO_ADDRESSEE, ">=");
+    $query->add_where(0, "uid", $this->viewed->relations, 'IN');
 
   }
 }

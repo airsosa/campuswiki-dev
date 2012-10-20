@@ -35,6 +35,7 @@ function heartbeat_rules_rules_action_info() {
     'uid' => array('type' => 'text', 'label' => t('User ID')),
     'nid_target' => array('type' => 'text', 'label' => t('Entity target ID'), 'optional' => TRUE),
     'uid_target' => array('type' => 'text', 'label' => t('User target ID'), 'optional' => TRUE),
+    'cid' => array('type' => 'text', 'label' => t('Comment ID'), 'optional' => TRUE),
   );
   $actions = array();
 
@@ -60,7 +61,10 @@ function heartbeat_rules_rules_action_info() {
 
     if (!empty($variables)) {
       foreach ($variables as $var_name => $variable) {
-        $actions[$name]['parameter'][$var_name] = array('type' => 'text', 'label' => $var_name);
+        $actions[$name]['parameter'][$var_name] = array(
+          'type' => 'text',
+          'label' => $var_name
+        );
       }
     }
 

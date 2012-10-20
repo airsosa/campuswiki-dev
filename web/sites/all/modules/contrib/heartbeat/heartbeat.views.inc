@@ -25,7 +25,7 @@ function heartbeat_views_data() {
          ),
        ),
       'base' => array(
-        'field' => 'rid',
+        'field' => 'uaid',
         'title' => t('Heartbeat activity'),
         'help' => t('Heartbeat activity content to form a news feed or heartbeat stream.'),
         'weight' => 0,
@@ -54,6 +54,9 @@ function heartbeat_views_data() {
       'filter' => array(
         'handler' => 'views_handler_filter_numeric',
       ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
     ),
     'uid' => array(
       'title' => t('User ID'),
@@ -69,12 +72,41 @@ function heartbeat_views_data() {
       'filter' => array(
         'handler' => 'views_handler_filter_numeric',
       ),
+      'relationship' => array(
+        'base' => 'users',
+        'field' => 'uid',
+        'label' => 'User ID',
+        'help' => t('Bring in data about the user in the activity.'),
+      ),
+    ),
+    'uid_target' => array(
+      'title' => t('User target ID'),
+      'help' => t('User target ID,  addressee in the activity message'),
+      'field' => array(
+        'handler' => 'views_handler_field_numeric',
+        'click sortable' => TRUE
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric'
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'relationship' => array(
+        'base' => 'users',
+        'field' => 'uid',
+        'label' => 'User target ID',
+        'help' => t('Bring in data about the user being addressed.'),
+      ),
     ),
     'nid' => array(
       'title' => t('Node ID'),
       'help' => t('Node ID used in the activity message'),
       'field' => array(
-        'handler' => 'views_handler_field_node_link',
+        'handler' => 'views_handler_field_numeric',
         'click sortable' => TRUE
       ),
       'argument' => array(
@@ -137,6 +169,29 @@ function heartbeat_views_data() {
         'handler' => 'views_handler_filter_date',
       ),
     ),
+    'message_id' => array(
+      'title' => t('Heartbeat template'),
+      'real field' => 'message_id',
+      'help' => t('The message template'),
+      'field' => array(
+        'handler' => 'views_handler_field_heartbeat_message_id',
+        'click sortable' => TRUE
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort_string',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_heartbeat_message_id',
+      ),
+    ),
+    'stream' => array(
+      'title' => t('Activity Stream'),
+      'real field' => 'uid',
+      'help' => t('Heartbeat Activity Stream to alter the query'),
+      'filter' => array(
+        'handler' => 'views_handler_filter_heartbeat_stream',
+      ),
+    ),
     'attachments' => array(
       'title' => t('Attachments'),
       'help' => t('Attachments for the activity message'),
@@ -146,32 +201,20 @@ function heartbeat_views_data() {
         'click sortable' => TRUE
       ),
     ),
+    'buttons' => array(
+      'title' => t('Buttons'),
+      'help' => t('Buttons associated with activity messages'),
+      'real field' => 'uaid',
+      'field' => array(
+        'handler' => 'views_handler_field_heartbeat_buttons',
+        'click sortable' => TRUE
+      ),
+    ),
 
   );
 
   return $tables;
 
-}
-
-/**
- * Implementation of hook_views_handlers().
- */
-function heartbeat_views_handlers() {
-  return array(
-    'info' => array(
-      'path' => drupal_get_path('module', 'heartbeat') . '/views',
-    ),
-    'handlers' => array(
-      'views_handler_field_heartbeat_message' => array(
-        'parent' => 'views_handler_field',
-        'file' => 'views_handler_field_heartbeat_message.inc',
-      ),
-      'views_plugin_row_heartbeat_view' => array(
-        'parent' => 'views_plugin_row',
-        'file' => 'views_plugin_row_heartbeat_view.inc',
-      ),
-    ),
-  );
 }
 
 /**
@@ -187,10 +230,21 @@ function heartbeat_views_plugins() {
         'handler' => 'views_plugin_row_heartbeat_view',
         'path' => drupal_get_path('module', 'heartbeat') . '/views',
         //'theme path' => drupal_get_path('module', 'heartbeat') . '/theme',
-        'theme' => 'views_view_row_heartbeat',
         'base' => array('heartbeat_activity'), // only works with 'heartbeat_activity' as base.
         'uses options' => TRUE,
         'type' => 'normal',
+        'help topic' => 'style-heartbeat',
+      ),
+      'heartbeat_activity_rss' => array(
+        'title' => t('Heartbeat activity'),
+        'help' => t('Display the message of the activity rss.'),
+        'handler' => 'views_plugin_row_heartbeat_rss',
+        'path' => drupal_get_path('module', 'heartbeat') . '/views',
+        'theme' => 'views_view_row_rss',
+        //'theme path' => drupal_get_path('module', 'heartbeat') . '/theme',
+        'base' => array('heartbeat_activity'), // only works with 'heartbeat_activity' as base.
+        'uses options' => TRUE,
+        'type' => 'feed',
         'help topic' => 'style-heartbeat',
       ),
     ),
@@ -209,8 +263,8 @@ function template_preprocess_views_view_row_heartbeat(&$vars) {
   $vars['comments'] = '';
   $row_plugin = $vars['view']->style_plugin->row_plugin;
 
-  if (!empty($vars['row']->{$vars['field_alias']})) {
-    $uaid = $vars['row']->{$vars['field_alias']};
+  if (!empty($vars['row']->uaid)) {
+    $uaid = $vars['row']->uaid;
   }
   // Invalid messages, messages restricted by access or grouped messages
   // result in the absense of a  user activity ID.
@@ -234,7 +288,10 @@ function template_preprocess_views_view_row_heartbeat(&$vars) {
 
   // Add the javascript and css files.
   drupal_add_js(drupal_get_path('module', 'heartbeat') . '/js/heartbeat.js');
-  drupal_add_css(drupal_get_path('module', 'heartbeat') . '/css/heartbeat.css');
+
+  if (variable_get('heartbeat_include_default_style', 1)) {
+    drupal_add_css(drupal_get_path('module', 'heartbeat') . '/css/heartbeat.css');
+  }
 
   $heartbeat_activity->view = $vars['view'];
   // Detect which build module should be used.

@@ -39,6 +39,6 @@ class views_handler_field_heartbeat_message extends views_handler_field {
   }
 
   function render_message($message, $values) {
-    return strtr($message, $values);
+    return t($message, $values);
   }
 }

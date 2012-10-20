@@ -111,6 +111,11 @@ class heartbeatParser {
       // Summaries have to be evaluated for merging.
       if ($type == 'summary') {
 
+        // Skip if an identical activity message already exists.
+        /*if (isset($this->_messages[$gap_id]) && $message->uid == $this->_messages[$gap_id]->uid) {
+          continue;
+        }*/
+
         // Add a candidates if this one does not exist yet.
         if (!isset($this->_candidates[$gap_id])) {
 
@@ -178,7 +183,14 @@ class heartbeatParser {
       // Loop through variables to check if there are identical.
       foreach ($info['variables'] as $rid => $value) {
 
-        $group_by = $value['!' . $info['group_target']];
+        // If for some reason a defined group target was not found
+        // in the message, use a substitute.
+        if (!isset($value['!' . $info['group_target']])) {
+          $group_by = 'default';
+        }
+        else {
+          $group_by = $value['!' . $info['group_target']];
+        }
 
         if (!isset($uniques[$group_by])) {
           $uniques[$group_by] = $value;
@@ -243,6 +255,8 @@ class heartbeatParser {
 
     }
 
+    // Summary.
+    // Merge messages by splitting up activity instances within timespans.
     $grouptarget = $message->template->concat_args['group_target'];
     $groupby = $message->template->concat_args['group_by'];
 

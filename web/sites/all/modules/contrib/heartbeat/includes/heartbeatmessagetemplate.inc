@@ -30,6 +30,7 @@ class HeartbeatMessageTemplate extends HeartbeatCtoolsObject {
   public $roles = array();
   public $new_type = NULL;
   public $base = NULL;
+  public $bundle = '';
 
 
   /**
@@ -120,9 +121,9 @@ class HeartbeatMessageTemplate extends HeartbeatCtoolsObject {
   }
 
   /**
-   * hasAttachments().
+   * hasPluginAttachments().
    */
-  public function hasAttachments() {
+  public function hasPluginAttachments() {
     return !empty($this->attachments);
   }
 
@@ -238,7 +239,7 @@ class HeartbeatMessageTemplate extends HeartbeatCtoolsObject {
   /**
    * getVariablesFromMessage().
    */
-  static public function getVariablesFromMessage($message, $message_concat) {
+  public static function getVariablesFromMessage($message, $message_concat) {
 
     $variables = array();
     preg_match_all("/\!([a-zA-Z0-9_]+)/", $message . ' ' . $message_concat, $matches);
