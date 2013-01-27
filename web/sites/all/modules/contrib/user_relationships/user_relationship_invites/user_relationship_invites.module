@@ -17,7 +17,7 @@
  *
  * @return
  *    object with the invite data including the inviter user object and relationship_type object
-*/
+ */
 function user_relationship_invites_get_invite($code) {
   if ($invite = db_query("SELECT * FROM {user_relationship_invites} WHERE invite_code = :code", array(':code' => $code))->fetchObject()) {
     $invite->inviter = user_load($invite->inviter_uid);
@@ -29,7 +29,7 @@ function user_relationship_invites_get_invite($code) {
 
 /**
  * Implements hook_form_alter().
-*/
+ */
 function user_relationship_invites_form_invite_form_alter(&$form, $form_state) {
   global $user;
   $new_user = drupal_anonymous_user();
@@ -38,25 +38,54 @@ function user_relationship_invites_form_invite_form_alter(&$form, $form_state) {
   $new_user->user_relationships_allow_all = TRUE;
   module_load_include('inc', 'user_relationships_ui', 'user_relationships_ui.forms');
   $form += user_relationships_ui_request_form($user, $new_user, isset($form_state['values']) ? $form_state['values'] : array());
-  $form['rtid']['#weight'] = 0;
-  $form['#validate'][] = 'user_relationship_invites_invite_form_validate';
+  if (isset($form['rtid'])) {
+    $form['ur_request'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Request relationship'),
+      '#weight' => -1,
+      '#default_value' => 1,
+    );
+    $form['rtid']['#weight'] = 0;
+    // Only show rtid if ur_request is checked.
+    $form['rtid']['#states'] = array(
+      'visible' => array(
+        ':input[name=ur_request]' => array('checked' => TRUE),
+      ),
+    );
+    $form['#validate'][] = 'user_relationship_invites_invite_form_validate';
+  }
 }
 
 /**
  * Custom form validation handler for the 'invite_form' form from Invite module
  * This custom handler acts to store the User Relationships relationship type ID
  * so that it can be used in the hook_invite implementation as it is not otherwise available.
+ * Also, adds a relationship action link if the user already exists.
  */
 function user_relationship_invites_invite_form_validate($form, &$form_state) {
   global $user;
-  if (!empty($form_state['values']['rtid'])) {
+  if (!empty($form_state['values']['rtid']) && $form_state['values']['ur_request']) {
     $user->rtid = $form_state['values']['rtid'];
+    $emails = _invite_get_emails($form_state['values']['email']);
+    if ($failed_emails = _invite_filter_registered_emails($emails)) {
+      foreach ($failed_emails as $email) {
+        $account = user_load_by_mail($email);
+        if ($actions = user_relationships_ui_actions_between($user, $account, array('add' => 1, 'requested' => 1, 'received' => 1))) {
+          drupal_set_message(theme('item_list', array('items' => $actions)), 'error');
+        }
+      }
+    }
+  }
+  else {
+    unset($form_state['values']['rtid']);
+    unset($form_state['values']['requestor']);
+    unset($form_state['values']['requestee']);
   }
 }
 
 /**
  * Implements hook_invite_send().
-*/
+ */
 function user_relationship_invites_invite_send($invite) {
   global $user;
   if (!empty($user->rtid)) {
@@ -72,7 +101,7 @@ function user_relationship_invites_invite_send($invite) {
 
 /**
  * Implements hook_user().
-*/
+ */
 function user_relationship_invites_form_user_register_form_alter(&$form, &$form_state) {
   if (!empty($_SESSION[INVITE_SESSION]) && ($code = $_SESSION[INVITE_SESSION]) && ($invite = user_relationship_invites_get_invite($code)) && $invite->relationship_type) {
 
@@ -83,7 +112,7 @@ function user_relationship_invites_form_user_register_form_alter(&$form, &$form_
     if (!$relationship_type->is_oneway || $relationship_type->requires_approval) {
       $form['relationship_invite_approve'] = array(
         '#type' => 'radios',
-        '#title' => t('Please confirm the %relationship_name request from !name', array('!name' => theme('username', array('account' => $inviter)), '%relationship_name' => $relationship_type->name)),
+        '#title' => t('Please confirm the @rel_name request from !name', array('!name' => theme('username', array('account' => $inviter))) + user_relationships_type_translations($relationship_type)),
         '#default_value' => 'approve',
         '#options' => array(
           'approve' => t('Yes'),

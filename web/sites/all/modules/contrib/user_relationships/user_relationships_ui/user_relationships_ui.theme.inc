@@ -39,7 +39,7 @@ function theme_user_relationships_request_relationship_direct_link($variables) {
     return theme('user_relationships_request_relationship_link', array('relate_to' => $relate_to));
   }
   return l(
-    t("Become %name's %rel_name", array('%name' => format_username($relate_to), '%rel_name' => ur_tt("user_relationships:rtid:$relationship_type->rtid:name", $relationship_type->name), '%rel_plural_name' => ur_tt("user_relationships:rtid:$relationship_type->rtid:plural_name", $relationship_type->plural_name))),
+    t("Become %name's @rel_name", array('%name' => format_username($relate_to)) + user_relationships_type_translations($relationship_type)),
     "relationship/{$relate_to->uid}/request/{$relationship_type->rtid}",
     array(
       'query' => drupal_get_destination(),

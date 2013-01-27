@@ -1,4 +1,4 @@
-name = UR-Views
+name = User Relationships Views
 description = "Integrates User Relationships with Views"
 dependencies[] = user_relationships
 dependencies[] = views
@@ -16,9 +16,9 @@ files[] = views_handler_filter_user_relationships_requester_or_requestee_current
 files[] = views_handler_filter_user_relationships_status.inc
 files[] = views_handler_filter_user_relationships_type.inc
 
-; Information added by drupal.org packaging script on 2012-03-01
-version = "7.x-1.0-alpha4"
+; Information added by drupal.org packaging script on 2013-01-23
+version = "7.x-1.0-alpha5"
 core = "7.x"
 project = "user_relationships"
-datestamp = "1330562762"
+datestamp = "1358919231"
 

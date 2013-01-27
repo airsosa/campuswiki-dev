@@ -3,8 +3,8 @@
  * @file
  * Link general user relationship functionalities to services module.
  *
- * @author Drupal 6 port by Darren Ferguson <http://drupal.org/user/70179>
- * @author Written by scottgifford http://drupal.org/user/245699 
+ * @author Drupal 6 port by Darren Ferguson <http://drupal.org/user/70179>.
+ * @author Written by scottgifford http://drupal.org/user/245699.
  */
 
 /**
@@ -13,7 +13,7 @@
 function user_relationship_service_help($path, $arg) {
   switch ($path) {
     case 'admin/help#services_user':
-      return '<p>'. t('Provides user relationship methods to services applications. Requires services.module.') .'</p>';
+      return '<p>' . t('Provides user relationship methods to services applications. Requires services.module.') . '</p>';
     case 'admin/modules#description':
       return t('Provides user relationship methods to services applications. Requires services.module.');
   }

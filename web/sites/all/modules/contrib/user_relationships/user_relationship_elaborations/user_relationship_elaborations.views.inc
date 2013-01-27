@@ -17,8 +17,8 @@ function user_relationship_elaborations_views_data() {
           'table' => 'user_relationship_elaborations',
           'left_field' => 'rid',
           'field' => 'rid',
-         ),
-       ),
+        ),
+      ),
       'base' => array(
         'field' => 'rid',
         'title' => t('User relationship'),

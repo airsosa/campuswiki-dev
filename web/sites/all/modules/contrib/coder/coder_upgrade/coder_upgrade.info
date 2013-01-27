@@ -1,10 +1,9 @@
-name = "Coder Upgrade"
-
-description = "Modifies source code to assist with the upgrade of a module for changes to a relied upon API."
-
+name = Coder Upgrade
+description = Modifies source code to assist with the upgrade of a module for changes to a relied upon API.
 package = Development
-;dependencies[] = coder ; Not a dependency
-dependencies[] = gplib
+core = 7.x
+
+dependencies[] = gplib (<2.0)
 
 ; only list files with class declarations
 ;files[] = coder_upgrade.help.inc
@@ -25,11 +24,9 @@ files[] = coder_upgrade.test
 
 configure = admin/config/development/coder/upgrade/settings
 
-core = 7.x
-
-; Information added by drupal.org packaging script on 2012-09-20
-version = "7.x-1.1"
+; Information added by drupal.org packaging script on 2012-11-11
+version = "7.x-1.2"
 core = "7.x"
 project = "coder"
-datestamp = "1348171608"
+datestamp = "1352602857"
 

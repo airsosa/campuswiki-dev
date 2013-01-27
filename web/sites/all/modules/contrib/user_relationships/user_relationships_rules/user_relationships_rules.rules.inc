@@ -140,9 +140,9 @@ function user_relationships_rules_rules_event_info() {
       'label' => t('A user relationship has been removed'),
       'group' => t('Relationships'),
       'arguments' => array(
-        'requester'   => array('type' => 'user',  'label' => t('User who initiated the request')),
-        'requestee'   => array('type' => 'user',  'label' => t('User whose relationship is requested')),
-        'relationship' => array('type' => 'relationship',  'label' => t('The relationship object'))
+        'requester'   => array('type' => 'user',   'label' => t('User who initiated the request')),
+        'requestee'   => array('type' => 'user',   'label' => t('User whose relationship is requested')),
+        'relationship' => array('type' => 'relationship',   'label' => t('The relationship object'))
       )
     ),
   );
@@ -189,7 +189,8 @@ function user_relationships_rules_action_delete_relationship($settings) {
     'requestee_id' => $settings['requestee'] instanceof EntityDrupalWrapper ? $settings['requestee']->getIdentifier() : $settings['requestee']->uid,
     'rtid' => $settings['relationship_type'],
   );
-  $existing = user_relationships_load($args);// finding rid - this method can probably be made better
+  // Finding rid - this method can probably be made better.
+  $existing = user_relationships_load($args);
   if ($relationship = reset($existing)) {
     $deleted_by = $settings['requester'] instanceof EntityDrupalWrapper ? user_load($settings['requester']->getIdentifier()) : $settings['requester'];
     user_relationships_delete_relationship($relationship, $deleted_by, 'remove');

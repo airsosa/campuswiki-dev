@@ -40,10 +40,10 @@ class UserRelationshipsPrivatemsgRecipientTestCase extends DrupalWebTestCase {
       'requires_approval' => FALSE,
       'expires_val' => 0,
     );
-    user_relationships_type_save((object)$relationship);
+    user_relationships_type_save((object) $relationship);
 
     // Flush permission cache.
-    user_relationships_types_load(TRUE);
+    drupal_static_reset('user_relationships_types_load');
     $this->checkPermissions(array(), TRUE);
 
     $have_permission = 'can have ' . $relationship['name'] . ' relationships';
@@ -139,17 +139,17 @@ class UserRelationshipsPrivatemsgRecipientTestCase extends DrupalWebTestCase {
    */
   function testManyRelations() {
 
-        // Create relationship.
+    // Create relationship.
     $relationship = array(
       'name' => $this->randomName(),
       'plural_name' => $this->randomName(),
       'requires_approval' => FALSE,
       'expires_val' => 0,
     );
-    user_relationships_type_save((object)$relationship);
+    user_relationships_type_save((object) $relationship);
 
     // Flush permission cache.
-    user_relationships_types_load(TRUE);
+    drupal_static_reset('user_relationships_types_load');
     $this->checkPermissions(array(), TRUE);
 
     $have_permission = 'can have ' . $relationship['name'] . ' relationships';

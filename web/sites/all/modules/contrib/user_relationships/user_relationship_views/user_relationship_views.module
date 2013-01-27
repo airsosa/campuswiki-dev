@@ -43,7 +43,7 @@ function user_relationship_views_ajax_autocomplete_relationships_type($string = 
   $last_string = trim(array_pop($array));
   $matches = array();
   if ($last_string != '') {
-    $prefix = count($array) ? implode(', ', $array) .', ' : '';
+    $prefix = count($array) ? implode(', ', $array) . ', ' : '';
 
 
     foreach (user_relationships_types_load() as $rtype) {
@@ -51,9 +51,9 @@ function user_relationship_views_ajax_autocomplete_relationships_type($string = 
         $n = $rtype->name;
         // Commas and quotes in terms are special cases, so encode 'em.
         if (strpos($rtype->name, ',') !== FALSE || strpos($rtype->name, '"') !== FALSE) {
-          $n = '"'. str_replace('"', '""', $rtype->name) .'"';
+          $n = '"' . str_replace('"', '""', $rtype->name) . '"';
         }
-        $matches[$prefix . $n] = check_plain(ur_tt("user_relationships:rtid:$rtype->rtid:name", $rtype->name));
+        $matches[$prefix . $n] = check_plain(user_relationships_type_get_name($rtype));
       }
     }
   }

@@ -41,12 +41,12 @@ function user_relationships_page($account = NULL, $rtid = NULL) {
 
   if ($account->uid == $user->uid) {
     $msg = isset($relationship_type)
-           ? t("My %relationships", array('%relationships' => $relationship_type->plural_name ? ur_tt("user_relationships:rtid:" . $relationship_type->rtid . ":plural_name", $relationship_type->plural_name) : ur_tt("user_relationships:rtid:" . $relationship_type->rtid . ":name", $relationship_type->name)))
+           ? t("My @rel_name_plural", user_relationships_type_translations($relationship_type))
            : t("My relationships");
   }
   else {
     $msg = isset($relationship_type)
-           ? t("%username's %relationships", array('%username' => format_username($account), '%relationships' => $relationship_type->plural_name ? ur_tt("user_relationships:rtid:" . $relationship_type->rtid . ":plural_name", $relationship_type->plural_name) : ur_tt("user_relationships:rtid:" . $relationship_type->rtid . ":name", $relationship_type->name)))
+           ? t("%username's @rel_name", array('%username' => format_username($account)) + user_relationships_type_translations($relationship_type))
            : t("%username's relationships", array('%username' => format_username($account)));
   }
   drupal_set_title($msg, PASS_THROUGH);
@@ -60,10 +60,10 @@ function user_relationships_page($account = NULL, $rtid = NULL) {
       // Add an empty space to the operations table row.
       $rows[$relationship->rid][] = '&nbsp;';
     }
-   }
+  }
 
   if (!empty($rtid)) {
-    $empty = t('You do not have any %plural_name.', array('%plural_name' => ur_tt("user_relationships:rtid:$relationship_type->rtid:plural_name", $relationship_type->plural_name)));
+    $empty = t('You do not have any @rel_name_plural.', user_relationships_type_translations($relationship_type));
   }
   else {
     $empty = t('You do not have any relationships with other users.');
@@ -174,7 +174,7 @@ function user_relationships_ui_get_table_row($relationship, $account) {
 
   $row = array(
     theme('username', array('account' => $this_user)),
-    ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name) . ($relationship->is_oneway ? ($this_user_str == 'requestee' ? t(' (You to Them)') : t(' (Them to You)')) : NULL),
+    check_plain(user_relationships_type_get_name($relationship, FALSE, $relationship->is_oneway && $this_user_str == 'requester')),
   );
 
   $permission = $account->uid == $relationship->requestee_id ? 'request' : 'approve';
@@ -184,7 +184,7 @@ function user_relationships_ui_get_table_row($relationship, $account) {
       $links[] = theme('user_relationships_remove_link', array('uid' => $account->uid, 'rid' => $relationship->rid));
     }
   }
-  else if (user_relationships_ui_check_access($permission, $account, $relationship)) {
+  elseif (user_relationships_ui_check_access($permission, $account, $relationship)) {
     if ($this_user_str == 'requestee') {
       // Sent requests, display cancel link.
       $links[] = theme('user_relationships_pending_request_cancel_link', array('uid' => $account->uid, 'rid' => $relationship->rid));

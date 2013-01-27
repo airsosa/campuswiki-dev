@@ -44,7 +44,7 @@ class UserRelationshipsBaseTestCase extends DrupalWebTestCase {
     }
 
     // Flush static cache.
-    user_relationships_types_load(TRUE);
+    drupal_static_reset('user_relationships_types_load');
 
     if (in_array('oneway', $create_types)) {
       $rtype = new StdClass;
@@ -104,10 +104,10 @@ class UserRelationshipsBaseTestCase extends DrupalWebTestCase {
     }
 
     // Flush static cache.
-    user_relationships_types_load(TRUE);
+    drupal_static_reset('user_relationships_types_load');
 
     // Flush permission cache.
-    user_relationships_types_load(TRUE);
+    user_relationships_types_load();
     $this->checkPermissions(array(), TRUE);
   }
 }
@@ -178,7 +178,7 @@ class UserRelationshipsTestCase extends UserRelationshipsBaseTestCase {
   function testRelationshipAPI() {
     $this->createDefaultRelationshipTypes();
 
-     $permissions = array(
+    $permissions = array(
       'can have ' . $this->rtypes['oneway']->name . ' relationships',
       'can request ' . $this->rtypes['oneway']->name . ' relationships',
       'can have ' . $this->rtypes['twoway']->name . ' relationships',
@@ -291,13 +291,13 @@ class UserRelationshipsTestCase extends UserRelationshipsBaseTestCase {
     $u3 = $this->drupalCreateUser($permissions);
     $u4 = $this->drupalCreateUser($permissions);
     // Create relationships.
-    $this->assertTrue((bool)user_relationships_request_relationship($u1, $u2, $this->rtypes['oneway']->rtid, FALSE));
-    $this->assertTrue((bool)user_relationships_request_relationship($u1, $u3, $this->rtypes['oneway']->rtid, FALSE));
+    $this->assertTrue((bool) user_relationships_request_relationship($u1, $u2, $this->rtypes['oneway']->rtid, FALSE));
+    $this->assertTrue((bool) user_relationships_request_relationship($u1, $u3, $this->rtypes['oneway']->rtid, FALSE));
     // user_relationships_request_relationship($u3, $u1, $this->rtypes['oneway']->rtid, FALSE);//this is a no-op
 
-    $this->assertTrue((bool)user_relationships_request_relationship($u1, $u2, $this->rtypes['twoway']->rtid, FALSE));
-    $this->assertTrue((bool)user_relationships_request_relationship($u1, $u3, $this->rtypes['twoway']->rtid, FALSE));
-    $this->assertTrue((bool)user_relationships_request_relationship($u4, $u1, $this->rtypes['twoway']->rtid, FALSE));
+    $this->assertTrue((bool) user_relationships_request_relationship($u1, $u2, $this->rtypes['twoway']->rtid, FALSE));
+    $this->assertTrue((bool) user_relationships_request_relationship($u1, $u3, $this->rtypes['twoway']->rtid, FALSE));
+    $this->assertTrue((bool) user_relationships_request_relationship($u4, $u1, $this->rtypes['twoway']->rtid, FALSE));
     //test between
     $result = user_relationships_load(array('between' => array($u1->uid, $u2->uid)));
     $this->assertEqual(count($result), 2);
@@ -480,6 +480,166 @@ class UserRelationshipsTestCase extends UserRelationshipsBaseTestCase {
     $rtype = $rtypes[$this->rtypes['approval-oneway']->rtid];
     $this->assertFalse($rtype->is_reciprocal);
     $rtype = $rtypes[$this->rtypes['approval']->rtid];
-    $this-> assertFalse($rtype->is_reciprocal);
+    $this->assertFalse($rtype->is_reciprocal);
+  }
+}
+
+/**
+ * User Relationship type tests.
+ */
+class UserRelationshipsTypesTestCase extends DrupalWebTestCase {
+
+  /**
+   * Implements getInfo().
+   */
+  function getInfo() {
+    return array(
+      'name' => t('User Relationships Types'),
+      'description' => t('Checks various user relationship types functions.'),
+      'group' => t('User Relationships'),
+    );
+  }
+
+  /**
+   * Enable modules.
+   */
+  function setUp() {
+    parent::setUp('user_relationships');
+  }
+
+  function testNames() {
+    // Create relationship type.
+    $relationship_type = (object) array(
+      'name' => $this->randomName(),
+      'plural_name' => $this->randomName(),
+      'reverse_name' => $this->randomName(),
+      'reverse_plural_name' => $this->randomName(),
+      'name_capitalized' => $this->randomName(),
+      'plural_name_capitalized' => $this->randomName(),
+      'reverse_name_capitalized' => $this->randomName(),
+      'reverse_plural_name_capitalized' => $this->randomName(),
+      'requires_approval' => FALSE,
+      'expires_val' => 0,
+    );
+
+    // First, check all names.
+    $this->assertEqual($relationship_type->name, user_relationships_type_get_name($relationship_type));
+    $this->assertEqual($relationship_type->plural_name, user_relationships_type_get_name($relationship_type, TRUE));
+    $this->assertEqual($relationship_type->reverse_name, user_relationships_type_get_name($relationship_type, FALSE, TRUE));
+    $this->assertEqual($relationship_type->reverse_plural_name, user_relationships_type_get_name($relationship_type, TRUE, TRUE));
+    $this->assertEqual($relationship_type->name_capitalized, user_relationships_type_get_name($relationship_type, FALSE, FALSE, TRUE));
+    $this->assertEqual($relationship_type->plural_name_capitalized, user_relationships_type_get_name($relationship_type, TRUE, FALSE, TRUE));
+    $this->assertEqual($relationship_type->reverse_name_capitalized, user_relationships_type_get_name($relationship_type, FALSE, TRUE, TRUE));
+    $this->assertEqual($relationship_type->reverse_plural_name_capitalized, user_relationships_type_get_name($relationship_type, TRUE, TRUE, TRUE));
+  }
+}
+
+
+/**
+ * User Relationship type tests.
+ */
+class UserRelationshipsI18nTestCase extends DrupalWebTestCase {
+
+  /**
+   * Implements getInfo().
+   */
+  function getInfo() {
+    return array(
+      'name' => t('User Relationships Internationalization'),
+      'description' => t('Asserts integration with I18n'),
+      'group' => t('User Relationships'),
+      'dependencies' => array('i18n'),
+    );
+  }
+
+  /**
+   * Enable modules.
+   */
+  function setUp() {
+    parent::setUp('user_relationships', 'i18n_string', 'user_relationships_ui');
+  }
+
+
+  /**
+   * Sets the proper environment.
+   *
+   * Currently just adds a new language.
+   *
+   * @param string $langcode
+   *   The language code.
+   */
+  function addLanguage($langcode) {
+    // Add the language.
+    $edit = array(
+      'langcode' => $langcode,
+    );
+    $this->drupalPost('admin/config/regional/language/add', $edit, t('Add language'));
+    $this->assertText($langcode, t('Language added successfully.'));
+
+    $this->drupalPost('admin/config/regional/language/edit/' . $langcode, array('prefix' => $langcode), t('Save language'));
+
+    // This is needed to refresh the static cache of the language list.
+    drupal_static_reset('language_list');
+  }
+
+
+  /**
+   * Test translation of types.
+   */
+  function testTypeTranslation() {
+
+    $admin = $this->drupalCreateUser(array('administer languages', 'access administration pages', 'administer user relationships', 'translate interface'));
+    $this->drupalLogin($admin);
+
+    $this->addLanguage('de');
+
+    $this->drupalPost('admin/config/regional/language/configure', array('language[enabled][locale-url]' => TRUE), t('Save settings'));
+
+    $this->drupalGet('admin/config/people/relationships');
+    $this->clickLink(t('Add relationship type'));
+
+    // Create relationship type.
+    $edit = array(
+      'name' => $this->randomName(),
+      'plural_name' => $this->randomName(),
+      'reverse_name' => $this->randomName(),
+      'reverse_plural_name' => $this->randomName(),
+      'name_capitalized' => $this->randomName(),
+      'plural_name_capitalized' => $this->randomName(),
+      'reverse_name_capitalized' => $this->randomName(),
+      'reverse_plural_name_capitalized' => $this->randomName(),
+      'requires_approval' => FALSE,
+      'ui_settings_show_tab' => TRUE,
+    );
+    $this->drupalPost(NULL, $edit, t('Add and translate'));
+    $this->clickLink(t('translate'));
+
+    // Get the subscriber id from the path.
+    $this->assertTrue(preg_match('|admin/config/people/relationships/(\d+)/translate$|', $this->getUrl(), $matches), 'Type id found');
+    $rtid = $matches[1];
+
+    // strings[user_relationships:type:1:name]
+    // Translate the type.
+    $translations = array(
+      "strings[user_relationships:type:$rtid:name]" => $this->randomName(),
+      "strings[user_relationships:type:$rtid:plural_name]" => $this->randomName(),
+      "strings[user_relationships:type:$rtid:reverse_name]" => $this->randomName(),
+      "strings[user_relationships:type:$rtid:reverse_plural_name]" => $this->randomName(),
+      "strings[user_relationships:type:$rtid:name_capitalized]" => $this->randomName(),
+      "strings[user_relationships:type:$rtid:plural_name_capitalized]" => $this->randomName(),
+      "strings[user_relationships:type:$rtid:reverse_name_capitalized]" => $this->randomName(),
+      "strings[user_relationships:type:$rtid:reverse_plural_name_capitalized]" => $this->randomName(),
+    );
+    $this->drupalPost(NULL, $translations, t('Save translation'));
+
+    $this->drupalGet('de/admin/config/people/relationships');
+
+    // The translated name should now be shown.
+    $this->assertNoText($edit['name']);
+    $this->assertText($translations["strings[user_relationships:type:$rtid:name]"]);
+
+    $this->drupalGet('de/relationships');
+    $this->assertNoText($edit['plural_name_capitalized']);
+    $this->assertText($translations["strings[user_relationships:type:$rtid:plural_name_capitalized]"]);
   }
 }

@@ -4,7 +4,7 @@
  * @file
  * Module to provide a ctools access plugin
  *
-*/
+ */
 
 
 function user_relationships_panels_visibility_ctools_plugin_directory($module, $plugin) {

@@ -21,7 +21,8 @@ function user_relationship_service_mine($version) {
       throw new Exception("User relationship load failed");
     }
     return array_values($rels);
-  } catch (Exception $ex) {
+  }
+  catch (Exception $ex) {
     return services_error(t('Error getting user relationships: @msg', array('@msg' => $ex->getMessage())));
   }
 }
@@ -29,7 +30,7 @@ function user_relationship_service_mine($version) {
 function user_relationship_service_approve($version, $rid) {
   try {
     global $user;
-    $rels = user_relationships_load(array('rid' => $rid , 'requestee_id' => $user->uid, 'approved' => 0));
+    $rels = user_relationships_load(array('rid' => $rid, 'requestee_id' => $user->uid, 'approved' => 0));
     if (!$rels || !is_array($rels) || count($rels) != 1) {
       throw new Exception("User relationship load failed");
     }
@@ -39,7 +40,8 @@ function user_relationship_service_approve($version, $rid) {
     }
     user_relationships_save_relationship($rel, 'approve');
     return $rel;
-  } catch (Exception $ex) {
+  }
+  catch (Exception $ex) {
     return services_error(t('Error approving relationship: @msg', array('@msg' => $ex->getMessage())));
   }
 }
@@ -47,7 +49,7 @@ function user_relationship_service_approve($version, $rid) {
 function user_relationship_service_delete($version, $rid, $reason) {
   try {
     global $user;
-    $rels = user_relationships_load(array('rid' => $rid , 'user' => $user->uid));
+    $rels = user_relationships_load(array('rid' => $rid, 'user' => $user->uid));
     if (!$rels || !is_array($rels) || count($rels) != 1) {
       throw new Exception("User relationship load failed");
     }
@@ -57,7 +59,8 @@ function user_relationship_service_delete($version, $rid, $reason) {
     }
     user_relationships_delete_relationship($rel, $user, $reason);
     return $rel;
-  } catch (Exception $ex) {
+  }
+  catch (Exception $ex) {
     return services_error(t('Error removing relationship: @msg', array('@msg' => $ex->getMessage())));
   }
 }
@@ -79,7 +82,8 @@ function user_relationship_service_request($version, $uid, $type_name) {
       throw new Exception($ret);
     }
     return $ret;
-  } catch (Exception $ex) {
+  }
+  catch (Exception $ex) {
     return services_error(t('Error requesting relationship: @msg', array('@msg' => $ex->getMessage())));
   }
 }

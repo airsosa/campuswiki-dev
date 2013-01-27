@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Implements hook_user_relationships_save()
+ * Implements hook_user_relationships_save().
  */
 function user_relationships_rules_user_relationships_save($relationship, $action) {
   switch ($action) {
@@ -13,7 +13,7 @@ function user_relationships_rules_user_relationships_save($relationship, $action
 }
 
 /**
- * Implements hook_user_relationships_delete()
+ * Implements hook_user_relationships_delete().
  */
 function user_relationships_rules_user_relationships_delete($relationship, $action) {
   switch ($action) {

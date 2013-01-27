@@ -21,7 +21,7 @@
  * @return
  *   object of the default relationship with the user object and relationship_type object
  *
-*/
+ */
 function user_relationship_default_load($param = array()) {
   $defaults = user_relationship_defaults_load();
 
@@ -33,11 +33,11 @@ function user_relationship_default_load($param = array()) {
     $found = TRUE;
 
     foreach ($param as $column => $value) {
-      $column = strtolower($column);
+      $column = drupal_strtolower($column);
 
       if ($column == 'name' || $column == 'plural_name') {
-        $value = strtolower($value);
-        $col_val = strtolower($default->$column);
+        $value = drupal_strtolower($value);
+        $col_val = drupal_strtolower($default->$column);
       }
       else {
         $col_val = $default->$column;
@@ -77,7 +77,7 @@ function user_relationship_defaults_load($reset = FALSE) {
         continue;
       }
 
-      foreach ((array)$default->relationship_type as $column => $value) {
+      foreach ((array) $default->relationship_type as $column => $value) {
         $default->$column = $value;
       }
 
@@ -175,7 +175,7 @@ function user_relationship_defaults_add_form_submit($form, &$form_state) {
 
   $message_p = array(
     '%username'           => $user->name,
-    '%relationship_name'  => ur_tt("user_relationships:rtid:$relationship_type->rtid:name", $relationship_type->name),
+    '%relationship_name'  => user_relationships_type_get_name($relationship_type),
   );
   drupal_set_message(t('Default relationship %relationship_name of %username has been added.', $message_p));
   watchdog('u_relationship', 'Default relationship %relationship_name of %username has been added.', $message_p, WATCHDOG_NOTICE, l(t('view'), 'admin/config/people/relationships'));
@@ -195,10 +195,7 @@ function user_relationship_defaults_delete_form($form, &$form_state, $default_re
 
   $form = confirm_form(
     $form,
-    t('Are you sure you want to delete the default relationship %relationship of %name?', array(
-      '%relationship' => ur_tt('user_relationships:rtid:' . $default_relationship->relationship_type->rtid . ':name', $default_relationship->relationship_type->name),
-      '%name'         => $default_relationship->user->name,
-    )),
+    t('Are you sure you want to delete the default relationship %rel_name of %name?', array('%name' => $default_relationship->user->name) + user_relationships_type_translations($default_relationship)),
     'admin/config/people/relationships',
     t('This action cannot be undone.'),
     t('Delete'), t('Cancel')
@@ -218,7 +215,7 @@ function user_relationship_defaults_delete_form_submit($form, &$form_state) {
     ->execute();
   $message_p = array(
     '%name'         => $default_relationship->user_name,
-    '%relationship' => ur_tt("user_relationships:rtid:$default_relationship->rtid:name", $default_relationship->name),
+    '%relationship' => user_relationships_type_get_name($default_relationship),
   );
   drupal_set_message(t('Default relationship %relationship of %name has been deleted.', $message_p));
   watchdog('u_relationship', 'Default relationship %relationship of %name has been deleted.', $message_p, WATCHDOG_NOTICE);
@@ -246,6 +243,15 @@ function user_relationship_defaults_user_update(&$edit, $account) {
   }
 }
 
+/**
+ * Implements hook_user_delete().
+ */
+function user_relationship_defaults_user_delete($account) {
+  db_delete('user_relationship_defaults')
+    ->condition('uid', $account->uid)
+    ->execute();
+}
+
 function _user_relationship_defaults_create_default_relationships($account) {
   //note that if a new account is approved, then blocked and unblocked before the user logged in once,
   //it'll attempt to create default relationships again (there won't be any errors if they already exist, though)
@@ -264,7 +270,7 @@ function user_relationship_defaults_user_relationships_types_list_alter(&$page) 
   $default_rows = array();
   foreach ($defaults as $default) {
     $default_rows[] = array(
-      $default->relationship_type->name,
+      check_plain(user_relationships_type_get_name($default->relationship_type)),
       theme('username', array('account' => $default->user)),
       l(t('delete'), "admin/config/people/relationships/defaults/{$default->rdid}/delete"),
     );

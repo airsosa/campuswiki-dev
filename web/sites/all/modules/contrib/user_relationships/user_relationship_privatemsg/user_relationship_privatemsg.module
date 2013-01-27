@@ -83,9 +83,9 @@ function theme_user_relationship_privatemsg_format($variables) {
 
   if ($relationship->account->uid == $user->uid) {
 
-    return t('your <a href="@url">%relationship</a>', array('%relationship' => $relationship->plural_name, '@url' => url('relationships/' . $relationship->rtid)));
+    return t('your <a href="@url">@rel_name_plural</a>', array('@url' => url('relationships/' . $relationship->rtid)) + user_relationships_type_translations($relationship));
   }
-  $name = t('%relationship of @username', array('%relationship' => $relationship->plural_name, '@username' => format_username($relationship->account)));
+  $name = t('@rel_name_plural of @username', array('@username' => format_username($relationship->account)) + user_relationships_type_translations($relationship));
   if (user_relationships_ui_check_access(array('user'), $relationship->account)) {
     return l($name, 'user/' . $relationship->account->uid . '/relationships/' . $relationship->rtid, array('html' => TRUE));
   }
@@ -311,13 +311,13 @@ function user_relationship_privatemsg_form_alter(&$form, &$form_state, $form_id)
   if (($form_id == 'user_register_form' || $form_id == 'user_profile_form') && $form['#user_category'] == 'account') {
     // #257748 #458046 for adding the functionality of allowing/disallowing
     // private messages.
-    if (variable_get('user_relationships_restrict_privatemsg', 'all') == 'all_overridable' && user_access('maintain @relationship relationships', $form['#user'])) {
+    if (variable_get('user_relationships_restrict_privatemsg', 'all') == 'all_overridable' && user_relationships_user_access('maintain @relationship relationships', NULL, $form['#user'])) {
       $form['privatemsg']['user_relationships_allow_private_message'] = array(
         '#type' => 'radios',
         '#title' => t('Allow private messages from...'),
         '#description' => t('Choose who can send you private messages.'),
         '#options' => array('on all users' => t('Everyone'), 'on in relations' => t('Only those who have an established relationship with me')),
-        '#default_value' => !empty($form['#user']->data['user_relationships_allow_private_message'])? $form['#user']->data['user_relationships_allow_private_message'] : 'on all users',
+        '#default_value' => !empty($form['#user']->data['user_relationships_allow_private_message']) ? $form['#user']->data['user_relationships_allow_private_message'] : 'on all users',
         '#states' => array(
           'visible' => array(
             ':input[name="pm_enable"]' => array('checked' => TRUE),

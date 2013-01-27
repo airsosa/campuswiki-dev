@@ -9,11 +9,11 @@
 /**
  * Constants
  */
-define('UR_BLOCK_ALL_TYPES',  'all');
+define('UR_BLOCK_ALL_TYPES', 'all');
 
-define('UR_BLOCK_SEPARATOR',  '-');
+define('UR_BLOCK_SEPARATOR', '-');
 
-define('UR_BLOCK_MY',   'my');
+define('UR_BLOCK_MY', 'my');
 define('UR_BLOCK_USER', 'user');
 
 /**
@@ -36,17 +36,17 @@ function user_relationship_blocks_theme() {
 
     'user_relationships_block' => array(
       'variables' => array('account' => NULL, 'settings' => NULL, 'extra' => NULL),
-      'path'      => drupal_get_path('module', 'user_relationship_blocks') .'/templates',
+      'path'      => drupal_get_path('module', 'user_relationship_blocks') . '/templates',
       'template'  => 'user_relationships-block',
     ),
     'user_relationships_pending_block' => array(
       'variables' => array('account' => NULL, 'settings' => NULL),
-      'path'      => drupal_get_path('module', 'user_relationship_blocks') .'/templates',
+      'path'      => drupal_get_path('module', 'user_relationship_blocks') . '/templates',
       'template'  => 'user_relationships-pending_block',
     ),
     'user_relationships_actions_block' => array(
-      'variables' => array('account' => NULL, 'settings' => NULL) ,
-      'path'      => drupal_get_path('module', 'user_relationship_blocks') .'/templates',
+      'variables' => array('account' => NULL, 'settings' => NULL),
+      'path'      => drupal_get_path('module', 'user_relationship_blocks') . '/templates',
       'template'  => 'user_relationships-actions_block',
     ),
   );
@@ -73,10 +73,10 @@ function theme_user_relationship_block_subject($variables) {
     global $user;
     $rtype = user_relationships_type_load($rtid);
     if ($account->uid == $user->uid) {
-      return t('I am a @rel_name of', array('@rel_name' => ur_tt("user_relationships:rtid:$rtid:name", $rtype->name), '@rel_plural_name' => $rtype->plural_name));
+      return t('I am a @rel_name of', user_relationships_type_translations($rtype));
     }
     else {
-      return t('@username is a @rel_name of', array('@username' => format_username($account), '@rel_name' => ur_tt("user_relationships:rtid:$rtid:name", $rtype->name), '@rel_plural_name' => $rtype->plural_name));
+      return t('@username is a @rel_name of', array('@username' => format_username($account)) + user_relationships_type_translations($rtype));
     }
   }
   else {
@@ -87,8 +87,8 @@ function theme_user_relationship_block_subject($variables) {
     else {
       $rtype = user_relationships_type_load($rtid);
       $output = ($account->uid == $user->uid)
-                ? t('My @relationships', array('@relationships' => ur_tt("user_relationships:rtid:$rtid:plural_name", $rtype->plural_name)))
-                : t("@username's @relationships", array('@username' => format_username($account), '@relationships' => ur_tt("user_relationships:rtid:$rtid:plural_name", $rtype->plural_name)));
+                ? t('My @rel_name', user_relationships_type_translations($rtype))
+                : t("@username's @rel_name", array('@username' => format_username($account)) + user_relationships_type_translations($rtype));
     }
     return $output;
   }
@@ -129,7 +129,7 @@ function user_relationship_blocks_block_configure($delta) {
     }
     else {
       $type = user_relationships_type_load($rtid);
-      $relationship_name = ur_tt("user_relationships:rtid:$rtid:name", $type->name);
+      $relationship_name = user_relationships_type_get_name($type);
     }
 
     $form['size'] = array(
@@ -146,11 +146,11 @@ function user_relationship_blocks_block_configure($delta) {
     );
 
     $user_identifier = ($block == UR_BLOCK_MY) ? t('currently logged in user') : t('author whose node is being viewed');
-    $msg = t("NOTE: This block displays @relationship_name relationships of the @user_identifier.", array('@relationship_name' => ur_tt("user_relationships:rtid:$rtid:name", $relationship_name), '@user_identifier' => $user_identifier));
+    $msg = t("NOTE: This block displays @rel_name relationships of the @user_identifier.", array('@rel_name' => $relationship_name, '@user_identifier' => $user_identifier));
 
     if ($extra) {
       $relation = $extra == 'you_to_them' ? t('requester') : t('requestee');
-      $msg .= "\n". t("Because this relationship is one-way this block will show relationships where the @user_identifier is the @relation", array('@user_identifier' => $user_identifier, '@relation' => $relation));
+      $msg .= "\n" . t("Because this relationship is one-way this block will show relationships where the @user_identifier is the @relation", array('@user_identifier' => $user_identifier, '@relation' => $relation));
     }
 
     //$sort_var = "{$var}_sort";
@@ -207,7 +207,7 @@ function user_relationship_blocks_block_view($delta) {
       $account = $user;
     }
   }
-  else if ($uid = _user_relationship_blocks_get_uid($delta)) {
+  elseif ($uid = _user_relationship_blocks_get_uid($delta)) {
     $account_loaded = user_load($uid);
     if ($account_loaded && user_relationships_ui_check_access('view', $account_loaded, user_relationships_type_load($rtid))) {
       $account = $account_loaded;
@@ -280,15 +280,15 @@ function user_relationship_blocks_block_info() {
     if ($type->is_oneway) {
       $extras = array(
         //add a little explanation about one-way relationships
-        UR_BLOCK_SEPARATOR .'you_to_them' => t('(You to Them, backward direction)'),
-        UR_BLOCK_SEPARATOR .'them_to_you' => t('(Them to You, normal direction)'),
+        UR_BLOCK_SEPARATOR . 'you_to_them' => t('(You to Them, backward direction)'),
+        UR_BLOCK_SEPARATOR . 'them_to_you' => t('(Them to You, normal direction)'),
       );
     }
 
     foreach ($extras as $token => $extra) {
       $block_types = array(
-        "{$my_delta}{$token}"   => t('My Relationships: @type @extra', array('@type' => $type->plural_name, '@extra' => $extra)),
-        "{$usr_delta}{$token}"  => t('User Relationships: @type @extra', array('@type' => $type->plural_name, '@extra' => $extra)),
+        "{$my_delta}{$token}" => t('My Relationships: @rel_name_plural @extra', array('@extra' => $extra) + user_relationships_type_translations($type)),
+        "{$usr_delta}{$token}" => t('User Relationships: @rel_name_plural @extra', array('@extra' => $extra) + user_relationships_type_translations($type)),
       );
       foreach ($block_types as $bid => $title) {
         $blocks[$bid] = array(
@@ -322,9 +322,9 @@ function user_relationship_blocks_block_save($delta = NULL, $edit = NULL) {
         'sort' => $edit['sort'],
       ))
       ->execute();
-    $settings[$delta] = (object)$edit;
+    $settings[$delta] = (object) $edit;
   }
-  else if ($delta && (!isset($settings[$delta]) || !$settings[$delta])) {
+  elseif ($delta && (!isset($settings[$delta]) || !$settings[$delta])) {
     $settings[$delta] = db_query("SELECT * FROM {user_relationship_blocks} WHERE bid = :bid", array(':bid' => $delta))->fetchObject();
     if (!$settings[$delta]) {
       // No overridden settings yet, return default array.
@@ -346,9 +346,9 @@ function user_relationship_blocks_block_save($delta = NULL, $edit = NULL) {
  * Template pre processor for the main block view
  */
 function template_preprocess_user_relationships_block(&$variables) {
-  $account  =& $variables['account'];
-  $settings =& $variables['settings'];
-  $extra    =& $variables['extra'];
+  $account  = &$variables['account'];
+  $settings = &$variables['settings'];
+  $extra    = &$variables['extra'];
 
   $query_opts = array('include_user_info' => TRUE);
 
@@ -361,9 +361,15 @@ function template_preprocess_user_relationships_block(&$variables) {
 
   // select the appropriate set of relationships based on admin's configuration settings
   switch ($settings->sort) {
-    case 'newest': $query_opts['order'] = array('changed', 'DESC'); break;
-    case 'oldest': $query_opts['order'] = array('changed', 'ASC'); break;
-    case 'random': $query_opts['order'] = 'RAND()'; break;
+    case 'newest':
+      $query_opts['order'] = array('changed', 'DESC');
+      break;
+    case 'oldest':
+      $query_opts['order'] = array('changed', 'ASC');
+      break;
+    case 'random':
+      $query_opts['order'] = 'RAND()';
+      break;
   }
 
   $query_opts['limit'] = $settings->size;
@@ -383,7 +389,7 @@ function template_preprocess_user_relationships_block(&$variables) {
  * Template pre processor for the pending relationships block
  */
 function template_preprocess_user_relationships_pending_block(&$variables) {
-  $account =& $variables['account'];
+  $account = &$variables['account'];
 
   $variables['relationships'] = user_relationships_load(array('user' => $account->uid, 'approved' => FALSE), array('include_user_info' => TRUE));
 }
@@ -393,8 +399,8 @@ function template_preprocess_user_relationships_pending_block(&$variables) {
  * Template pre processor for the relationship actions block
  */
 function template_preprocess_user_relationships_actions_block(&$variables) {
-  $user     =& $variables['user'];
-  $account  =& $variables['account'];
+  $user     = &$variables['user'];
+  $account  = &$variables['account'];
 
   if ($user != $account) {
     $variables['current_relationships'] = user_relationships_ui_actions_between($user, $account, array('remove' => 1));

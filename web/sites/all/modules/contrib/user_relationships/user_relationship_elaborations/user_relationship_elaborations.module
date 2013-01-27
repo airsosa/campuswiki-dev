@@ -21,7 +21,7 @@
  */
 function user_relationships_save_elaboration($rid, $elaboration) {
   $record = array(
-    'rid'         => $rid,
+    'rid' => $rid,
     'elaboration' => $elaboration,
   );
 
@@ -62,7 +62,7 @@ function user_relationship_elaborations_user_relationships_delete($relationship,
 }
 
 /**
- * Implements hook_user_relationships_load()
+ * Implements hook_user_relationships_load().
  */
 function user_relationship_elaborations_user_relationships_load($relationships) {
   $rids = array();

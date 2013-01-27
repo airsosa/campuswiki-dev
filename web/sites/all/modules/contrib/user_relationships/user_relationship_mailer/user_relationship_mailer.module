@@ -1,6 +1,7 @@
 <?php
 /**
- * @file User Relationships Mailer module. Handles email notifications when relationships are added or removed
+ * @file
+ * Handles email notifications when relationships are added or removed.
  */
 
 /**
@@ -102,14 +103,14 @@ function user_relationship_mailer_mail($op, &$message, $replacements) {
 }
 
 /**
- * Implements hook_user_relationships_save()
+ * Implements hook_user_relationships_save().
  */
 function user_relationship_mailer_user_relationships_save($relationship, $action) {
   user_relationship_mailer_send_email($action, $relationship);
 }
 
 /**
- * Implements hook_user_relationships_save()
+ * Implements hook_user_relationships_delete().
  */
 function user_relationship_mailer_user_relationships_delete($relationship, $action) {
   user_relationship_mailer_send_email($action, $relationship);
@@ -119,65 +120,65 @@ function user_relationship_mailer_user_relationships_delete($relationship, $acti
  * Implements hook_form_FORM_ID_alter().
  */
 function user_relationship_mailer_form_user_relationships_admin_settings_alter(&$form, &$form_state) {
-    global $_user_relationship_mailer_ops;
+  global $_user_relationship_mailer_ops;
 
-    $form['mail'] = array(
+  $form['mail'] = array(
       '#type'   => 'fieldset',
       '#title'  => t('E-mail Notification'),
       '#weight' => -9,
       '#group' => 'settings',
     );
-    $form['mail']['user_relationship_mailer_send_mail'] = array(
+  $form['mail']['user_relationship_mailer_send_mail'] = array(
       '#type'           => 'checkbox',
       '#title'          => t('Allow users to disable e-mail notifications'),
       '#default_value'  => variable_get('user_relationship_mailer_send_mail', FALSE),
       '#description'    => t('If checked, users can control e-mail notifications by changing a setting on their account edit page. If left unchecked, e-mail notifications will be sent to all users based on the global settings shown below.'),
     );
 
-    $form['mail']['mail_settings'] = array(
+  $form['mail']['mail_settings'] = array(
       '#type' => 'vertical_tabs',
     );
 
-    //compose a list of possible replacement keys for email templates
-    $replacement_keys = array_keys(user_relationship_mailer_replacements());
-    //these two are added per-recipient in user_relationship_mailer_send_email()
-    $replacement_keys[] = '@profile_uid';
-    $replacement_keys[] = '@target_name';
-    $macro_replacements = array('%macros' => implode(', ', $replacement_keys));
+  // Compose a list of possible replacement keys for email templates.
+  $replacement_keys = array_keys(user_relationship_mailer_replacements());
+  // These two are added per-recipient in user_relationship_mailer_send_email().
+  $replacement_keys[] = '@profile_uid';
+  $replacement_keys[] = '@target_name';
+  $macro_replacements = array('%macros' => implode(', ', $replacement_keys));
 
-    $translations = _user_relationship_mailer_ops_translations();
-    foreach ($_user_relationship_mailer_ops as $op) {
-      $defaults_function = "user_relationship_mailer_{$op}_default";
-      $defaults = $defaults_function();
+  $translations = _user_relationship_mailer_ops_translations();
+  foreach ($_user_relationship_mailer_ops as $op) {
+    $defaults_function = "user_relationship_mailer_{$op}_default";
+    $defaults = $defaults_function();
 
-      $op_translated = isset($translations[$op]) ? $translations[$op] : t(ucfirst(str_replace('_', '-', $op)));
-      $send_op_translated = isset($translations['send_'. $op]) ? $translations['send_'. $op] : t('Send @op messages', array('@op' => $op_translated));
-      $replacement_translations = t('Available tokens include: %macros', $macro_replacements);
+    $op_translated = isset($translations[$op]) ? $translations[$op] : t(drupal_ucfirst(str_replace('_', '-', $op)));
+    $send_op_translated = isset($translations['send_' . $op]) ? $translations['send_' . $op] : t('Send @op messages', array('@op' => $op_translated));
+    $replacement_translations = t('Available tokens include: %macros', $macro_replacements);
 
-      $form['mail'][$op] = array(
+    $form['mail'][$op] = array(
         '#type'         => 'fieldset',
         '#title'        => $op_translated,
         '#collapsible'  => TRUE,
         '#collapsed'    => TRUE,
         '#group'        => 'mail_settings',
       );
-      $form['mail'][$op]["user_relationship_mailer_send_{$op}"] = array(
+    $form['mail'][$op]["user_relationship_mailer_send_{$op}"] = array(
         '#type'           => 'checkbox',
         '#title'          => $send_op_translated,
         '#default_value'  => variable_get("user_relationship_mailer_send_{$op}", TRUE),
       );
-      $form['mail'][$op]["user_relationship_mailer_{$op}_subject"] = array(
+    $form['mail'][$op]["user_relationship_mailer_{$op}_subject"] = array(
         '#type'           => 'textfield',
         '#title'          => t('Email subject'),
         '#default_value'  => variable_get("user_relationship_mailer_{$op}_subject", $defaults['subject']),
       );
-      $form['mail'][$op]["user_relationship_mailer_{$op}_message"] = array(
+    $form['mail'][$op]["user_relationship_mailer_{$op}_message"] = array(
         '#type'           => 'textarea',
         '#title'          => t('Email message'),
         '#default_value'  => variable_get("user_relationship_mailer_{$op}_message", $defaults['message']),
         '#description'    => $replacement_translations,
       );
-    }
+  }
 }
 
 /**

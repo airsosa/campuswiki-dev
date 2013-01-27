@@ -31,8 +31,10 @@ function theme_user_relationship_node_access_form($arguments) {
   $form = $arguments['form'];
 
   $all_actions = array('view' => t('view'), 'update' => t('update'), 'delete' => t('delete'));
-  $actions = array();//allowed actions that will appear on the form
-  //#388726 IE7 will not like sticky javascript table headers, so construct the header as a regular row
+  // Allowed actions that will appear on the form.
+  $actions = array();
+  // #388726 IE7 will not like sticky javascript table headers, so construct the
+  // header as a regular row.
   $header = array(
     array(
       'data' => t('Relationship Type'),
@@ -87,7 +89,7 @@ function _user_relationship_node_access_disabling($set = NULL) {
 }
 
 /**
- * Implements hook_form_BASE_alter().
+ * Implements hook_form_BASE_FORM_ID_alter() for user_profile_form.
  */
 function user_relationship_node_access_form_user_profile_form_alter(&$form, &$form_state, $form_id) {
   // Allow users to set default settings for sharing content.
@@ -111,7 +113,7 @@ function user_relationship_node_access_user_presave(&$edit, $account, $category)
 }
 
 /**
- * Implements hook_form_BASE_alter()
+ * Implements hook_form_BASE_FORM_ID_alter() for node_form.
  */
 function user_relationship_node_access_form_node_form_alter(&$form, &$form_state, $form_id) {
   // Verify we can set permissions on this node.
@@ -172,11 +174,11 @@ function _user_relationship_node_access_permission_form($object_type, $object) {
   foreach ($types as $rtid => $type) {
     unset($types[$rtid]);
     if ($type->is_oneway) {
-      $types["{$rtid}_yt"] = t('Post to @type (you to them)', array('@type' => $type->plural_name));
-      $types["{$rtid}_ty"] = t('Post to @type (them to you)', array('@type' => $type->plural_name));
+      $types["{$rtid}_yt"] = t('Post to @rel_name', user_relationships_type_translations($type));
+      $types["{$rtid}_ty"] = t('Post to @rel_name_reverse', user_relationships_type_translations($type));
     }
     else {
-      $types[$rtid] = t('Post to @type', array('@type' => $type->plural_name));
+      $types[$rtid] = t('Post to @rel_name', user_relationships_type_translations($type));
     }
   }
   asort($types);
@@ -208,7 +210,7 @@ function _user_relationship_node_access_permission_form($object_type, $object) {
   // use advanced form with a table if more than one permission, otherwise just a simple 'post to related users' checkbox
   $use_advanced_form = count($author_allowed_perms) > 1;
   // different labels for group posts (that have the group audience fieldset)
-  $is_group_post = module_exists('og') && og_is_group_content_type('node', $node->type);
+  $is_group_post = module_exists('og') && $object_type == 'node' && og_is_group_content_type('node', $node->type);
 
   $form['user_relationship_node_access'] = array(
     '#type'         => 'fieldset',
@@ -260,7 +262,7 @@ function user_relationship_node_access_perm() {
 }
 
 /**
- * Sitewide settings
+ * Sitewide settings.
  */
 function user_relationship_node_access_form_user_relationships_admin_settings_alter(&$form, &$form_state) {
   $form['node_access'] = array(
@@ -279,14 +281,14 @@ function user_relationship_node_access_form_user_relationships_admin_settings_al
 }
 
 /**
- * Implements hook_node_update()
+ * Implements hook_node_update().
  */
 function user_relationship_node_access_node_update($node) {
   user_relationship_node_access_update_node($node);
 }
 
 /**
- * Implements hook_node_insert()
+ * Implements hook_node_insert().
  */
 function user_relationship_node_access_node_insert($node) {
   user_relationship_node_access_update_node($node);
@@ -304,12 +306,6 @@ function user_relationship_node_access_update_node($node) {
     return;
   }
 
-  // Clear old settings, this will actually clear even ones that user is not
-  // allowed to set.
-  db_delete('user_relationship_node_access')
-    ->condition('nid', $node->nid)
-    ->execute();
-
   $user_relationship_node_access = array();
   if (!empty($node->user_relationship_node_access) && count($node->user_relationship_node_access)) {
     // Reformat the array and optimize.
@@ -319,6 +315,12 @@ function user_relationship_node_access_update_node($node) {
       if (!is_array($permissions)) {
         continue;
       }
+
+      //if the grants actions is not set return
+      if (!isset($allowed_grants[$action])) {
+        return;
+      }
+
       foreach ($permissions as $key => $permission) {
         // Make sure user is allowed to set this permission
         if ($allowed_grants[$action] && $permission) {
@@ -326,6 +328,13 @@ function user_relationship_node_access_update_node($node) {
         }
       }
     }
+
+    // Clear old settings, this will actually clear even ones that user is not
+    // allowed to set.
+    db_delete('user_relationship_node_access')
+      ->condition('nid', $node->nid)
+      ->execute();
+
     // Save permissions if any are set.
     db_insert('user_relationship_node_access')
       ->fields(array(
@@ -338,7 +347,7 @@ function user_relationship_node_access_update_node($node) {
 }
 
 /**
- * Implements hook_node_load()
+ * Implements hook_node_load().
  */
 function user_relationship_node_access_node_load($nodes, $types) {
   foreach ($nodes as $node) {
@@ -347,7 +356,7 @@ function user_relationship_node_access_node_load($nodes, $types) {
 }
 
 /**
- * Implements hook_node_delete()
+ * Implements hook_node_delete().
  */
 function user_relationship_node_access_node_delete($node) {
   db_delete('user_relationship_node_access')
@@ -357,7 +366,7 @@ function user_relationship_node_access_node_delete($node) {
 
 
 /**
- * Implements hook_node_grants()
+ * Implements hook_node_grants().
  */
 function user_relationship_node_access_node_grants($account, $op) {
   // get this user's relationships
@@ -404,9 +413,9 @@ function user_relationship_node_access_node_access_records($node) {
       $grants[] = array(
         'realm'         => "user_relationship_node_access_{$rtid}",
         'gid'           => $node->uid,
-        'grant_view'    => isset($permissions['view']) ? (int)$permissions['view'] : 0,
-        'grant_update'  => isset($permissions['update']) ? (int)$permissions['update'] : 0,
-        'grant_delete'  => isset($permissions['delete']) ? (int)$permissions['delete'] : 0,
+        'grant_view'    => isset($permissions['view']) ? (int) $permissions['view'] : 0,
+        'grant_update'  => isset($permissions['update']) ? (int) $permissions['update'] : 0,
+        'grant_delete'  => isset($permissions['delete']) ? (int) $permissions['delete'] : 0,
         'priority'      => 0,
       );
     }
@@ -427,9 +436,13 @@ function user_relationship_node_access_node_access_records($node) {
 }
 
 /**
- * Load UR-NA permissions for a node
- * @param $nid node ID
- * @return array {access key based on rtid} => {array of allowed actions on a node}
+ * Load UR-NA permissions for a node.
+ *
+ * @param $nid
+ *   node ID.
+ *
+ * @return
+ *   array {access key based on rtid} => {array of allowed actions on a node}.
  */
 function _user_relationship_node_access_load_node_perms($nid = NULL) {
   if (!$nid) {
@@ -442,8 +455,11 @@ function _user_relationship_node_access_load_node_perms($nid = NULL) {
 /**
  * Check if we are allowed to effect permissions on a node
  *
- * @param $node node to check
- * @return TRUE iff permissions on the node may be set for related users
+ * @param $node
+ *   node to check.
+ *
+ * @return
+ *   TRUE if permissions on the node may be set for related users
  */
 function _user_relationship_node_access_node_eligible($node) {
   $allowed_types = variable_get('user_relationship_node_access_allowed_types', array());
@@ -453,13 +469,15 @@ function _user_relationship_node_access_node_eligible($node) {
 /**
  * Find the list of permissions that a user is allowed to grant
  *
- * @param $user user to check, if not the current user
- * @return array of zero or more of ('view', 'update', 'delete')
+ * @param $account
+ *   user to check, if not the current user
+ * @return
+ *   array of zero or more of ('view', 'update', 'delete')
  */
-function _user_relationship_node_access_get_allowed_grants($user = NULL) {
+function _user_relationship_node_access_get_allowed_grants($account = NULL) {
   $allowed_grants = array();
   foreach (array('view', 'update', 'delete') as $type) {
-    if (user_access('grant ' . $type . ' permission to related users', $user)) {
+    if (user_access('grant ' . $type . ' permission to related users', $account)) {
       $allowed_grants[$type] = $type;
     }
   }

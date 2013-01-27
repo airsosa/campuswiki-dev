@@ -19,7 +19,7 @@ function user_relationships_ui_request_validate($form, &$form_state) {
   $current_relationships = user_relationships_load(array('between' => array($requester->uid, $requestee->uid)), array('sort' => 'rtid'));
   //check for multiple relationships
   if (!variable_get('user_relationships_allow_multiple', TRUE) && count($current_relationships)) {
-  form_set_error('rtid', user_relationships_get_message('too_many_relationships'));
+    form_set_error('rtid', user_relationships_get_message('too_many_relationships'));
     if (isset($_GET['ajax'])) {
       drupal_goto();
     }
@@ -60,17 +60,17 @@ function user_relationships_ui_request_validate($form, &$form_state) {
     foreach ($value as $val_rel) {
       //existing two way relationships count no matter the direction
       if (!$val_rel->is_oneway) {
-        $test_relationships[$key]=$key;
+        $test_relationships[$key] = $key;
         continue;
       }
       //if it's one way, but not reciprocal, then it counts no matter the direction
       if (!$val_rel->is_reciprocal) {
-        $test_relationships[$key]=$key;
+        $test_relationships[$key] = $key;
         continue;
       }
       //remaining case is a reciprocal relationship - it counts unless the request is in the opposite direction
       if ($requester->uid == $val_rel->requester_id) {
-        $test_relationships[$key]=$key;
+        $test_relationships[$key] = $key;
       }
     }
   }
@@ -128,36 +128,36 @@ function user_relationships_ui_pending_requested_submit($form, &$form_state) {
   $requestee    = $relationship->requestee;
 
   switch ($form_state['values']['action']) {
-  case 'approve':
-    if (!user_relationships_ui_check_access('approve', NULL, $relationship)) {
-      drupal_access_denied();
-      exit();
-    }
-    $relationship->approved = TRUE;
-    user_relationships_save_relationship($relationship, $form_state['values']['action']);
-    drupal_set_message(user_relationships_get_message('accepted', $relationship));
-    break;
+    case 'approve':
+      if (!user_relationships_ui_check_access('approve', NULL, $relationship)) {
+        drupal_access_denied();
+        exit();
+      }
+      $relationship->approved = TRUE;
+      user_relationships_save_relationship($relationship, $form_state['values']['action']);
+      drupal_set_message(user_relationships_get_message('accepted', $relationship));
+      break;
 
-  case 'cancel':
-    if (!user_relationships_ui_check_access('request', NULL, $relationship)) {
-      drupal_access_denied();
-      exit();
-    }
-    user_relationships_delete_relationship($relationship, $user, $form_state['values']['action']);
-    drupal_set_message(user_relationships_get_message($form_state['values']['action'], $relationship));
-    break;
+    case 'cancel':
+      if (!user_relationships_ui_check_access('request', NULL, $relationship)) {
+        drupal_access_denied();
+        exit();
+      }
+      user_relationships_delete_relationship($relationship, $user, $form_state['values']['action']);
+      drupal_set_message(user_relationships_get_message($form_state['values']['action'], $relationship));
+      break;
 
-  case 'disapprove':
-    if (!user_relationships_ui_check_access('approve', NULL, $relationship)) {
-      drupal_access_denied();
-      exit();
-    }
-    user_relationships_delete_relationship($relationship, $user, $form_state['values']['action']);
-    drupal_set_message(user_relationships_get_message($form_state['values']['action'], $relationship));
-    break;
+    case 'disapprove':
+      if (!user_relationships_ui_check_access('approve', NULL, $relationship)) {
+        drupal_access_denied();
+        exit();
+      }
+      user_relationships_delete_relationship($relationship, $user, $form_state['values']['action']);
+      drupal_set_message(user_relationships_get_message($form_state['values']['action'], $relationship));
+      break;
 
-  default:
-    drupal_set_message(user_relationships_get_message('default'));
+    default:
+      drupal_set_message(user_relationships_get_message('default'));
   }
 
   $form_state['redirect'] = str_replace('destination=', '', drupal_get_destination());

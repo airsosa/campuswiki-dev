@@ -5,24 +5,17 @@
  * Plugin to provide access control based on user relationship.
  */
 
-/**
- * Implement specially named hook_ctools_access().
- */
-function user_relationships_panels_visibility_ur_relationship_ctools_access() {
-  $args['ur_relationship'] = array(
-    'title' => t("User Relationship"),
-    'description' => t('Control access based on relationship between two users'),
-    'callback' => 'user_relationships_panels_visibility_ctools_access_check',
-    'default' => array('ur_relationship' => array()),
-    'settings form' => 'user_relationships_panels_visibility_ctools_access_settings',
-    'summary' => 'user_relationships_panels_visibility_ctools_access_summary',
-    'required context' => array(
-      new ctools_context_required(t('First User'), 'user'),
-      new ctools_context_required(t('Second User'), 'user')),
-  );
-
-  return $args;
-}
+$plugin = array(
+  'title' => t("User Relationships"),
+  'description' => t('Control access based on relationship between two users'),
+  'callback' => 'user_relationships_panels_visibility_ctools_access_check',
+  'default' => array('ur_relationship' => array()),
+  'settings form' => 'user_relationships_panels_visibility_ctools_access_settings',
+  'summary' => 'user_relationships_panels_visibility_ctools_access_summary',
+  'required context' => array(
+    new ctools_context_required(t('First User'), 'user'),
+    new ctools_context_required(t('Second User'), 'user')),
+);
 
 /**
  * Settings form for the user relationships access plugin
@@ -41,6 +34,15 @@ function user_relationships_panels_visibility_ctools_access_settings(&$form, &$f
     '#title' => t('Allow if relationship between users is'),
     '#default_value' => $conf['ur_relationship'],
   );
+
+  $form['settings']['ur_self'] = array(
+    '#type' => 'checkboxes',
+    '#options' => array(1 => 'Yes'),
+    '#title' => t('Return true if both users are the same (e.g when viewing your own profile).'),
+    '#default_value' => $conf['ur_self'],
+  );
+
+  return $form;
 }
 
 /**
@@ -53,6 +55,11 @@ function user_relationships_panels_visibility_ctools_access_check($conf, $contex
   }
   $account1 = $context[0]->data;
   $account2 = $context[1]->data;
+
+  // If you are viewing something which is your own (like your profile) return TRUE.
+  if ($conf['ur_self']['1'] == 1 && $account1->uid == $account2->uid) {
+    return TRUE;
+  }
 
   $relationships = user_relationships_load(array("between" => array($account1->uid, $account2->uid)));
   foreach ($relationships as $relationship) {

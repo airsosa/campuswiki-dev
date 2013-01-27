@@ -65,7 +65,7 @@ class UserRelationshipUserSettings extends DrupalWebTestCase {
     user_relationships_type_save($rtype);
     $this->rtypes['approval-oneway'] = $rtype;
 
-    user_relationships_types_load(TRUE);
+    drupal_static_reset('user_relationships_types_load');
 
     // Allow users to auto approve relationships.
     variable_set('user_relationships_allow_auto_approve', TRUE);
@@ -74,7 +74,7 @@ class UserRelationshipUserSettings extends DrupalWebTestCase {
     variable_set('user_relationship_mailer_send_mail', TRUE);
 
     // Flush permission cache.
-    user_relationships_types_load(TRUE);
+    drupal_static_reset('user_relationships_types_load');
     $this->checkPermissions(array(), TRUE);
   }
 
@@ -82,7 +82,7 @@ class UserRelationshipUserSettings extends DrupalWebTestCase {
    * Test the various user settings.
    */
   function testAutoApprovalSettings() {
-     $permissions = array(
+    $permissions = array(
       'can have ' . $this->rtypes['oneway']->name . ' relationships',
       'can request ' . $this->rtypes['oneway']->name . ' relationships',
       'can have ' . $this->rtypes['twoway']->name . ' relationships',
@@ -175,13 +175,13 @@ class UserRelationshipUserSettings extends DrupalWebTestCase {
     $this->assertEqual(count($relationships), 2);
     foreach ($relationships as $relationship) {
       if ($relationship->rtid == $this->rtypes['approval-oneway']->rtid) {
-        $this->assertTrue((bool)$relationship->approved);
+        $this->assertTrue((bool) $relationship->approved);
       }
       elseif ($relationship->rtid == $this->rtypes['approval']->rtid) {
-        $this->assertFalse((bool)$relationship->approved);
+        $this->assertFalse((bool) $relationship->approved);
       }
       else {
-        $this->fail('Unexpected relationship type @type' , array('@type' => $relationship->rtid));
+        $this->fail('Unexpected relationship type @type', array('@type' => $relationship->rtid));
       }
     }
 

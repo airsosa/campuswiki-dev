@@ -63,7 +63,7 @@ need to see the documentation in that file for a deeper explanation.
   Functions
   =========
   user_relationships_type_load($param = array())
-  user_relationships_types_load($reset = NULL)
+  user_relationships_types_load()
   user_relationships_type_save($rtype)
   user_relationships_type_delete($rtid)
 

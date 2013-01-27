@@ -25,7 +25,8 @@ function user_relationships_preprocess_author_pane(&$variables) {
 
   $rtids = variable_get('user_relationships_author_pane_rtids', array());
   if (!is_array($rtids)) {
-    $rtids = array($rtids);//wrap into array for now, while selection is single
+    // Wrap into array for now, while selection is single.
+    $rtids = array($rtids);
   }
   if (!count($rtids)) {
     return;
@@ -44,7 +45,7 @@ function user_relationships_preprocess_author_pane(&$variables) {
       // Existing relationship; need remove icon/link. (Despite the foreach,
       // there should only be one.)
       foreach ($relationships as $relationship) {
-        $link_label = t('Remove @name from @rel_plural_name', array('@name' => format_username($account), '@rel_plural_name' => $relationship->plural_name));
+        $link_label = t('Remove @name from @rel_plural_name', array('@name' => format_username($account)) + user_relationships_type_translations($relationship));
         $css_class = array(str_replace(' ', '-', $relationship->name), 'author-pane-link', 'user_relationships_popup_link', 'author-relationship-remove-icon');
         //link to remove
         if (!isset($variables['user_relationships'])) {
@@ -52,7 +53,7 @@ function user_relationships_preprocess_author_pane(&$variables) {
         }
         $variables['user_relationships'] .= '<div class="author-pane-ur-link-item">';
         $variables['user_relationships'] .=
-          l('<span>' . t('Remove @rel_name', array('@name' => format_username($account), '@rel_name' => ur_tt("user_relationships:rtid:$relationship->rtid:name", $relationship->name))) . '</span>',
+          l('<span>' . t('Remove @rel_name', array('@name' => format_username($account)) + user_relationships_type_translations($relationship)) . '</span>',
           "user/{$user->uid}/relationships/{$relationship->rid}/remove",
           array(
                 'query' => drupal_get_destination(),
@@ -74,13 +75,13 @@ function user_relationships_preprocess_author_pane(&$variables) {
       }
       $variables['user_relationships'] .= '<div class="author-pane-ur-link-item">';
       $variables['user_relationships'] .=
-        l('<span>' . t('Add @rel_name', array('@name' => format_username($account), '@rel_name' => ur_tt("user_relationships:rtid:$rtype->rtid:name", $rtype->name))) . '</span>',
+        l('<span>' . t('Add @rel_name', array('@name' => format_username($account)) + user_relationships_type_translations($relationship)) . '</span>',
           "relationship/{$account->uid}/request/{$rtype->rtid}",
           array(
             'query' => drupal_get_destination(),
             'html' => TRUE,
             'attributes'  => array(
-              'title' => t('Become @name\'s @rel_name', array('@name' => format_username($account), '@rel_name' => ur_tt("user_relationships:rtid:$rtype->rtid:name", $rtype->name))),
+              'title' => t('Become @name\'s @rel_name', array('@name' => format_username($account)) + user_relationships_type_translations($rtype)),
               'class' => $css_class
             ),
           )
