@@ -211,6 +211,11 @@ function statuses_admin_contexts($form, &$form_state) {
     }
   }
   foreach ($data as $type => $values) {
+    $form['components'][$type]['enabled'] = array(
+      '#type' => 'checkbox',
+      '#default_value' => isset($values['enabled']) ? $values['enabled'] : TRUE,
+      '#disabled' => $type == 'user' ? TRUE : FALSE,
+    );
     $form['components'][$type]['title'] = array(
       '#prefix' => '<div title="' . (isset($values['description']) ? $values['description'] : '') . '">',
       '#markup' => $values['title'],
@@ -227,11 +232,6 @@ function statuses_admin_contexts($form, &$form_state) {
         'admin/config/statuses/contexts/' . $type,
         array('query' => array('destination' => 'admin/config/statuses/contexts'))
       ),
-    );
-    $form['components'][$type]['weight'] = array(
-      '#type' => 'weight',
-      '#delta' => $count,
-      '#default_value' => isset($values['weight']) ? $values['weight'] : 0,
     );
     $form['components'][$type]['type'] = array(
       '#type' => 'hidden',
@@ -290,10 +290,10 @@ function statuses_admin_contexts_submit($form, &$form_state) {
   foreach ($form_state['values']['components'] as $type => $item) {
     $record = array(
       'type' => $item['type'],
-      'weight' => intval($item['weight']),
       'view' => $item['view'],
       'selectors' => $item['selectors'],
-      'pages' => $item['pages']
+      'pages' => $item['pages'],
+      'enabled' => $item['enabled'],
     );
     if ($item['already_saved']) {
       drupal_write_record('statuses_contexts', $record, 'type');
@@ -309,22 +309,21 @@ function statuses_admin_contexts_submit($form, &$form_state) {
  */
 function theme_statuses_admin_contexts($variables) {
   $form = $variables['form'];
-  drupal_add_tabledrag('statuses-admin-contexts-table', 'order', 'sibling', 'weight-group');
-  $header = array(t('Title'), t('View'), t('Actions'), t('Weight'), '', '');
+  $header = array(t('Enabled'), t('Title'), t('View'), t('Actions'), '', '');
   $rows = array();
   foreach (element_children($form['components']) as $key) {
     $element = &$form['components'][$key];
+    $element['enabled']['#attributes']['class']       = array('enabled-group');
     $element['title']['#attributes']['class']         = array('title-group');
     $element['view']['#attributes']['class']          = array('view-group');
     $element['link']['#attributes']['class']          = array('link-group');
-    $element['weight']['#attributes']['class']        = array('weight-group');
     $element['type']['#attributes']['class']          = array('type');
     $element['already_saved']['#attributes']['class'] = array('already-saved');
     $row = array();
+    $row[] = drupal_render($element['enabled']);
     $row[] = drupal_render($element['title']);
     $row[] = drupal_render($element['view']);
     $row[] = drupal_render($element['link']);
-    $row[] = drupal_render($element['weight']);
     $row[] = drupal_render($element['type']);
     $row[] = drupal_render($element['already_saved']);
     $rows[] = array(
@@ -332,7 +331,9 @@ function theme_statuses_admin_contexts($variables) {
       'class' => array('draggable'),
     );
   }
-  $output = '<p>' . t('The view assigned to the "User profiles" context does not affect the view shown on conversation pages.') . '</p>';
+  $output = '<p>' . t('Contexts are used to automatically determine the recipient of a status message.') . ' ' .
+    t('For example, if the "Nodes" context is active on a node page, then status updates on that page will be assigned to the current node.') . '</p><p>' .
+    t('Note: the view assigned to the "User profiles" context does not affect the view shown on conversation pages.') . '</p>';
   $output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'statuses-admin-contexts-table')));
   $output .= drupal_render_children($form);
   return $output;
@@ -349,6 +350,17 @@ function statuses_admin_context_settings($form, $form_state, $context) {
   if ($type == 'user') {
     $form['notice'] = array(
       '#markup' => '<p>' . t('The view assigned to the "User profiles" context does not affect the view shown on conversation pages.') . '</p>',
+    );
+  }
+  
+  if (!isset($context['enabled']) || $context['enabled']) {
+    $form['enabled'] = array(
+      '#markup' => '<p>' . t('This context is <strong>enabled</strong>.') . '</p>',
+    );
+  }
+  else {
+    $form['enabled'] = array(
+      '#markup' => '<p>' . t('This context is <strong>disabled</strong>.') . '</p>',
     );
   }
 
@@ -431,11 +443,7 @@ function statuses_admin_context_settings($form, $form_state, $context) {
       '#type' => 'radios',
       '#title' => t('Apply context on specific pages'),
       '#options' => $options,
-      '#default_value' => isset($context['visibility']) ? ($context['visibility'] == 3 && !module_exists('context') ? -1 : $context['visibility']) : -1,
-    );
-    $form['page_vis_settings']['context'] = array(
-      '#type' => 'value',
-      '#value' => isset($context['context']) ? $context['context'] : '',
+      '#default_value' => isset($context['visibility']) ? ($context['visibility'] == 3 ? -1 : $context['visibility']) : -1, // The check for '3' is for backwards-compatibility (used to be for Context module integration)
     );
     $form['page_vis_settings']['pages'] = array(
       '#type' => 'textarea',
@@ -462,10 +470,6 @@ function statuses_admin_context_settings($form, $form_state, $context) {
     '#type' => 'hidden',
     '#value' => isset($context['in_db']) ? $context['in_db'] : FALSE,
   );
-  $form['weight'] = array(
-    '#type' => 'hidden',
-    '#default_value' => isset($context['weight']) ? $context['weight'] : 0,
-  );
   return $form;
 }
 
@@ -476,12 +480,10 @@ function statuses_admin_context_settings_submit($form, &$form_state) {
   $v = $form_state['values'];
   $record = array(
     'type' => $v['type'],
-    'weight' => intval($v['weight']),
     'view' => $v['view'],
     'selectors' => $v['selectors'],
     'visibility' => intval($v['visibility']),
     'pages' => $v['pages'],
-    'context' => $v['context'],
   );
   if ($v['already_saved']) {
     drupal_write_record('statuses_contexts', $record, 'type');

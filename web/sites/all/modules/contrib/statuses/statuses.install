@@ -70,13 +70,6 @@ function statuses_schema() {
         'default' => '',
         'description' => 'The stream context type.',
       ),
-      'weight' => array(
-        'type' => 'int',
-        'unsigned' => FALSE,
-        'not null' => TRUE,
-        'default' => 0,
-        'description' => 'The weight of the component.',
-      ),
       'view' => array(
         'type' => 'varchar',
         'length' => 255,
@@ -102,16 +95,13 @@ function statuses_schema() {
         'not null' => TRUE,
         'description' => 'Contains either a list of paths on which to include/exclude the context or PHP code, depending on "visibility" setting.',
       ),
-      'context' => array(
-        'description' => 'The primary identifier for a context.',
-        'type' => 'varchar',
-        'length' => 255,
+      'enabled' => array(
+        'type' => 'int',
         'not null' => TRUE,
-        'default' => '',
+        'default' => 1,
+        'size' => 'tiny',
+        'description' => 'Whether this context is active or not.',
       ),
-    ),
-    'indexes' => array(
-      'weight' => array('weight'),
     ),
     'primary key' => array('type'),
   );
@@ -148,10 +138,10 @@ function _statuses_update_7100(&$sandbox) {
       ORDER BY f.sid ASC
     ");
     db_query("
-      INSERT INTO {statuses_contexts} (type, weight, view, selectors, visibility, pages, context)
-      SELECT f.type, f.weight, f.view, f.selectors, f.visibility, f.pages, f.context
+      INSERT INTO {statuses_contexts} (type, view, selectors, visibility, pages)
+      SELECT f.type, f.view, f.selectors, f.visibility, f.pages
       FROM {facebook_status_contexts} f
-      ORDER BY f.weight ASC, f.type ASC
+      ORDER BY f.type ASC
     ");
 
     // Delete old tables.
@@ -208,6 +198,37 @@ function _statuses_update_7100(&$sandbox) {
 
     return t('The Statuses module for Drupal 7 was upgraded from the Facebook-style Statuses module for Drupal 6.');
   }
+}
+
+/**
+ * Add a column to mark a context as enabled or disabled.
+ */
+function statuses_update_7101() {
+  // Note to self: D7 implementations of hook_update_N() use the docblock as
+  // the description of an update so it should not be the usual
+  // "Implements hook_update_N()."
+  $new_field = array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 1,
+    'size' => 'tiny',
+    'description' => 'Whether this context is active or not.',
+  );
+  db_add_field('statuses_contexts', 'enabled', $new_field);
+}
+
+/**
+ * Drop the 'weight' field from the contexts table.
+ */
+function statuses_update_7102() {
+  db_drop_field('statuses_contexts', 'weight');
+}
+
+/**
+ * Drop the 'context' field from the contexts table.
+ */
+function statuses_update_7103() {
+  db_drop_field('statuses_contexts', 'context');
 }
 
 /**
