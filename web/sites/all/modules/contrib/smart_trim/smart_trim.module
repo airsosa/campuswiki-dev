@@ -50,14 +50,14 @@ function smart_trim_field_formatter_view($entity_type, $entity, $field, $instanc
           if (!empty($settings['trim_options']['text'])) {
             // Strip tags
             $output = strip_tags(str_replace('<', ' <', $output));
-            
+
             // Strip out line breaks
             $output = preg_replace('/\n|\r|\t/m', ' ', $output);
-            
+
             // Strip out non-breaking spaces
             $output = str_replace('&nbsp;', ' ', $output);
             $output = str_replace("\xc2\xa0", ' ', $output);
-            
+
             // Strip out extra spaces
             $output = trim(preg_replace('/\s\s+/', ' ', $output));
           }
@@ -67,16 +67,37 @@ function smart_trim_field_formatter_view($entity_type, $entity, $field, $instanc
         $shortened = FALSE;
         if ($settings['summary_handler'] != 'full' || empty($item['summary'])) {
           if ($settings['trim_type'] == 'words') {
-            $words = preg_split('/\s/', $output, NULL, PREG_SPLIT_NO_EMPTY); //use \s or use PREG_CLASS_UNICODE_WORD_BOUNDARY?
-            $output2 = implode(" ", array_slice($words, 0,  $settings['trim_length']));
-            $output2 = _filter_htmlcorrector($output2);
+            //only bother with this is we have to
+            if ($settings['trim_length'] < str_word_count($output)) {
+              //use \s or use PREG_CLASS_UNICODE_WORD_BOUNDARY?
+              $words = preg_split('/\s/', $output, NULL, PREG_SPLIT_NO_EMPTY);
+              $output2 = implode(" ", array_slice($words, 0,  $settings['trim_length']));
+              $output2 = _filter_htmlcorrector($output2);
+            }
+            //field contained fewer words than we're trimming at, so do nothing
+            else {
+              $output2 = $output;
+            }
           }
           else {
-            //See http://api.drupal.org/api/drupal/modules%21field%21modules%21text%21text.module/function/text_summary/7
-            //text_summary is smart about looking for paragraphs, sentences, etc, not strictly just length. Uses truncate_utf8 as well
-            $output2 = text_summary($output, $instance['settings']['text_processing'] ? $item['format'] : NULL, $settings['trim_length']);
+            // Use views_trim_text() if available.
+            if (module_exists('views')) {
+              $output2 = views_trim_text(array(
+                'max_length' => $settings['trim_length'],
+                'word_boundary' => TRUE,
+                'ellipsis' => FALSE,
+                'html' => TRUE,
+              ), $output);
+            }
+            else {
+              //See http://api.drupal.org/api/drupal/modules%21field%21modules%21text%21text.module/function/text_summary/7
+              //text_summary is smart about looking for paragraphs, sentences,
+              //etc, not strictly just length. Uses truncate_utf8 as well
+              $output2 = text_summary($output, $instance['settings']['text_processing'] ? $item['format'] : NULL, $settings['trim_length']);
+            }
           }
-          
+
+          //verify if we actually performed any shortening
           if (drupal_strlen($output) != drupal_strlen($output2)) {
             $shortened = TRUE;
           }
@@ -88,15 +109,16 @@ function smart_trim_field_formatter_view($entity_type, $entity, $field, $instanc
         if ($shortened) {
           $extension = $settings['trim_suffix'];
         }
-        // Don't duplicate a period at the end of the text and beginning of extension
+        // Don't duplicate period at end of text and beginning of extension
         if (substr($output, -1, 1) == '.' && substr($extension, 0, 1) == '.') {
           $extension = substr($extension, 1);
         }
 
         // Add the link, if there is one!
         $uri = entity_uri($entity_type, $entity);
-        if ($uri && $settings['more_link']) {
-          $extension .= " " . l( $settings['more_text'], $uri['path'], array('html' => TRUE, 'attributes' => array('class' => array('more-link'))));
+        // But wait! Don't add a more link if the field ends in <!--break-->
+        if ($uri && $settings['more_link'] && strpos(strrev($output), strrev('<!--break-->')) !== 0) {
+          $extension .= l(t($settings['more_text']), $uri['path'], array('html' => TRUE, 'attributes' => array('class' => array('more-link'))));
         }
 
         $output_appended = preg_replace('#^(.*)(\s?)(</[^>]+>)$#Us', '$1' . $extension . '$3', $output);
@@ -125,7 +147,8 @@ function smart_trim_field_formatter_settings_form($field, $instance, $view_mode,
     '#type' => 'textfield',
     '#size' => 10,
     '#default_value' => $settings['trim_length'],
-    '#element_validate' => array('_element_validate_integer_positive'),  //needs form.inc?
+    //needs form.inc?
+    '#element_validate' => array('_element_validate_integer_positive'),
     '#required' => TRUE,
   );
 

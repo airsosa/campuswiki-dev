@@ -99,6 +99,8 @@ function hook_statuses_delete($status, $meta = array()) {
  *     Overrides the is_applicable() function of the context handler.
  *   - weight (optional): The default precedence of the context type. An
  *     integer, where lower values float to the top and higher values sink.
+ *   - enabled (optional): Whether the context is enabled or disabled by
+ *     default (defaults to TRUE).
  *   - file (optional): A file to load before loading the context handler.
  * @see statuses_all_contexts()
  */
@@ -146,7 +148,7 @@ function hook_statuses_refresh_selectors($recipient, $type) {
 }
 
 /**
- * hook_link() is invoked with parameters 'statuses' and $status.
+ * hook_statuses_link() is invoked with parameters 'statuses' and $status.
  * Implement it just like you would implement hook_link() with nodes in D6.
  *
  * @param $type
@@ -156,21 +158,19 @@ function hook_statuses_refresh_selectors($recipient, $type) {
  * @return
  *   A structured array which will be run through drupal_render() to produce
  *   links that will be displayed with themed statuses.
- * @see statuses_link()
+ * @see statuses_statuses_link()
  * @see _statuses_show()
  */
-if (!function_exists('hook_link')) {
-  function hook_link($type, $object, $teaser = FALSE) {
-    $links = array();
-    if ($type == 'statuses') {
-      $status = $object;
-      $links['permalink'] = array(
-        'href' => 'statuses/'. $status->sid,
-        'title' => t('Permalink'),
-      );
-    }
-    return $links;
+function hook_statuses_link($type, $object, $teaser = FALSE) {
+  $links = array();
+  if ($type == 'statuses') {
+    $status = $object;
+    $links['permalink'] = array(
+      'href' => 'statuses/'. $status->sid,
+      'title' => t('Permalink'),
+    );
   }
+  return $links;
 }
 
 /**

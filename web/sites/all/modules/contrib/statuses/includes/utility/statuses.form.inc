@@ -74,7 +74,7 @@ function theme_statuses_form_display($variables) {
       $converse = ' statuses-conversation-form';
     }
     $form = drupal_get_form('statuses_box', $recipient, $type);
-    $output .= '<div class="clear-block statuses-update statuses-update-main facebook-status-form-type-' . $type . $self . $converse . '">' .
+    $output .= '<div class="clear-block statuses-update statuses-update-main statuses-form-type-' . $type . $self . $converse . '">' .
       drupal_render($form) . '</div>';
   }
   if ($conversation) {
@@ -292,6 +292,9 @@ function statuses_box_submit($form, &$form_state) {
     $form_state['redirect'] = array($_GET['q']);
     $form_state['rebuild'] = FALSE;
   }
+  // Clear the input values - Mainly for Shift + Enter submit,
+  // For more information see https://drupal.org/node/1719876.
+  $form_state['input'] = array();
 }
 
 /**
@@ -299,16 +302,22 @@ function statuses_box_submit($form, &$form_state) {
  */
 function statuses_save_js($form, $form_state) {
   $new_form = array();
-  // Get HTML for the replacement form. Only these elements will be AHAH-refreshed.
-  $new_form['opendiv']     = $form['opendiv'];
-  if (!empty($form['intro'])) {
-    $new_form['intro']       = $form['intro'];
+  // Define elements to be AHAH-refreshed.
+  $elements = array(
+    'opendiv',
+    'intro',
+    'chars',
+    'fbss-status',
+    'fbss-submit',
+    'sdefault',
+    'closediv',
+  );
+  // Copy existing values from old form to new form.
+  foreach ($elements as $element) {
+    if (isset($form[$element])) {
+      $new_form[$element] = $form[$element];
+    }
   }
-  $new_form['fbss-status'] = $form['fbss-status'];
-  $new_form['chars']       = $form['chars'];
-  $new_form['fbss-submit'] = $form['fbss-submit'];
-  $new_form['sdefault']    = $form['sdefault'];
-  $new_form['closediv']    = $form['closediv'];
   $new_form['fbss-status']['#value'] = ''; // Clear the old value. See https://drupal.org/node/1265048
   // Calls hook_statuses_form_ahah_alter(&$new_form, $form).
   drupal_alter('statuses_form_ahah', $new_form, $form);
